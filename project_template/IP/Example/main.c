@@ -118,25 +118,21 @@ int main(void)
   ***********************************************************************************************************/
 void UxART0_Configuration(void)
 {
-#if 0 // Use following function to configure the IP clock speed.
-    // The UxART IP clock speed must be faster 16x then the baudrate.
-    CKCU_SetPeripPrescaler(CKCU_PCLK_UxARTn, CKCU_APBCLKPRE_DIV2);
-#endif
+    CKCU_PeripClockConfig_TypeDef CKCUClock; // Set all the fields to zero, which means that no peripheral clocks are enabled by default.
 
-    {   /* Enable peripheral clock of AFIO, UxART                                                               */
-        CKCU_PeripClockConfig_TypeDef CKCUClock = {{0}};
-        CKCUClock.Bit.AFIO                   = 1;
-        CKCUClock.Bit.HTCFG_UART_RX_GPIO_CLK = 1;
-        CKCUClock.Bit.HTCFG_UART_IPN         = 1;
+    {   /* Enable peripheral clock of AFIO, UxART                                                                 */
+        CKCUClock.Bit.AFIO = 1;
+        CKCUClock.Bit.PA = 1;
+        CKCUClock.Bit.USART0 = 1;
         CKCU_PeripClockConfig(CKCUClock, ENABLE);
     }
 
     /* Turn on UxART Rx internal pull up resistor to prevent unknow state                                     */
-    GPIO_PullResistorConfig(HTCFG_UART_RX_GPIO_PORT, HTCFG_UART_RX_GPIO_PIN, GPIO_PR_UP);
+    GPIO_PullResistorConfig(HT_GPIOA, GPIO_PIN_3, GPIO_PR_UP);
 
     /* Config AFIO mode as UxART function.                                                                    */
-    AFIO_GPxConfig(HTCFG_UART_TX_GPIO_ID, HTCFG_UART_TX_AFIO_PIN, AFIO_FUN_USART_UART);
-    AFIO_GPxConfig(HTCFG_UART_RX_GPIO_ID, HTCFG_UART_RX_AFIO_PIN, AFIO_FUN_USART_UART);
+    AFIO_GPxConfig(GPIO_PA, AFIO_PIN_2, AFIO_FUN_USART_UART);
+    AFIO_GPxConfig(GPIO_PA, AFIO_PIN_3, AFIO_FUN_USART_UART);
 
     {
         /* UxART configured as follow:
@@ -188,7 +184,7 @@ void UxART1_Configuration(void)
     }
 
     /* Turn on UxART Rx internal pull up resistor to prevent unknow state                                     */
-    GPIO_PullResistorConfig(HT_GPIOA, GPIO_PIN_4, GPIO_PR_UP);
+    GPIO_PullResistorConfig(HT_GPIOA, GPIO_PIN_5, GPIO_PR_UP);
 
     /* Config AFIO mode as UxART function.                                                                    */
     AFIO_GPxConfig(GPIO_PA, AFIO_PIN_4, AFIO_FUN_USART_UART);
