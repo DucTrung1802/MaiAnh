@@ -74,8 +74,9 @@
 
 void GNSS_UART0_Configuration(void);
 
-void UxART0_TxSend(u16 Data);
-void UxART0_Tx(char* input_string);
+void USART0_Configuration(void);
+void USART0_Send_Char(u16 Data);
+void USART0_Send(char* input_string);
 
 void UxART1_Configuration(void);
 void UxART1_TxSend(u16 Data);
@@ -101,10 +102,11 @@ int main(void)
 {
     LED_Init();
     LED_Toggle();
-    UxART0_Configuration();
+    GNSS_UART0_Configuration();
+    USART0_Configuration();
     UxART1_Configuration();
 
-    UxART0_Tx((char*)"AT\r\n");
+    USART0_Send((char*)"AT\r\n");
     UxART1_Tx((char*)"AT\r\n");
 
     while (1)
@@ -117,52 +119,52 @@ int main(void)
   * @brief  Configure the UART0 for GNSS
   * @retval None
   ***********************************************************************************************************/
-void GNSS_UART0_Configuration(void){
-		CKCU_PeripClockConfig_TypeDef CKCUClock; // Set all the fields to zero, which means that no peripheral clocks are enabled by default.
+void GNSS_UART0_Configuration(void) {
+    CKCU_PeripClockConfig_TypeDef CKCUClock; // Set all the fields to zero, which means that no peripheral clocks are enabled by default.
 
-	{/* Enable peripheral clock of AFIO, UxART                                                                 */
-	CKCUClock.Bit.AFIO = 1;
-	CKCUClock.Bit.PB = 1;
-	CKCUClock.Bit.UART0 = 1;
-	CKCU_PeripClockConfig(CKCUClock, ENABLE);
-	}
-	
-	/* Turn on UxART Rx internal pull up resistor to prevent unknow state                                     */
-  GPIO_PullResistorConfig(HT_GPIOB, GPIO_PIN_8, GPIO_PR_UP);
-	
-	/* Config AFIO mode as UxART function.                                                                    */
-  AFIO_GPxConfig(GPIO_PB, AFIO_PIN_7, AFIO_FUN_USART_UART);
-  AFIO_GPxConfig(GPIO_PB, AFIO_PIN_8, AFIO_FUN_USART_UART);
-	
-	{
-    /* UxART configured as follow:
-          - BaudRate = 115200 baud
-          - Word Length = 8 Bits
-          - One Stop Bit
-          - None parity bit
-    */
+    {   /* Enable peripheral clock of AFIO, UxART                                                                 */
+        CKCUClock.Bit.AFIO = 1;
+        CKCUClock.Bit.PB = 1;
+        CKCUClock.Bit.UART0 = 1;
+        CKCU_PeripClockConfig(CKCUClock, ENABLE);
+    }
 
-    /* !!! NOTICE !!!
-       Notice that the local variable (structure) did not have an initial value.
-       Please confirm that there are no missing members in the parameter settings below in this function.
-    */
-    USART_InitTypeDef USART_InitStructure = {0};
-    USART_InitStructure.USART_BaudRate = 9600;
-    USART_InitStructure.USART_WordLength = USART_WORDLENGTH_8B;
-    USART_InitStructure.USART_StopBits = USART_STOPBITS_1;
-    USART_InitStructure.USART_Parity = USART_PARITY_NO;
-    USART_InitStructure.USART_Mode = USART_MODE_NORMAL;
-    USART_Init(HT_UART0, &USART_InitStructure);
-  }
-	
-	/* Enable UxART Tx and Rx function                                                                        */
-  USART_TxCmd(HT_UART0, ENABLE);
-  USART_RxCmd(HT_UART0, ENABLE);
+    /* Turn on UxART Rx internal pull up resistor to prevent unknow state                                     */
+    GPIO_PullResistorConfig(HT_GPIOB, GPIO_PIN_8, GPIO_PR_UP);
+
+    /* Config AFIO mode as UxART function.                                                                    */
+    AFIO_GPxConfig(GPIO_PB, AFIO_PIN_7, AFIO_FUN_USART_UART);
+    AFIO_GPxConfig(GPIO_PB, AFIO_PIN_8, AFIO_FUN_USART_UART);
+
+    {
+        /* UxART configured as follow:
+              - BaudRate = 115200 baud
+              - Word Length = 8 Bits
+              - One Stop Bit
+              - None parity bit
+        */
+
+        /* !!! NOTICE !!!
+           Notice that the local variable (structure) did not have an initial value.
+           Please confirm that there are no missing members in the parameter settings below in this function.
+        */
+        USART_InitTypeDef USART_InitStructure = {0};
+        USART_InitStructure.USART_BaudRate = 9600;
+        USART_InitStructure.USART_WordLength = USART_WORDLENGTH_8B;
+        USART_InitStructure.USART_StopBits = USART_STOPBITS_1;
+        USART_InitStructure.USART_Parity = USART_PARITY_NO;
+        USART_InitStructure.USART_Mode = USART_MODE_NORMAL;
+        USART_Init(HT_UART0, &USART_InitStructure);
+    }
+
+    /* Enable UxART Tx and Rx function                                                                        */
+    USART_TxCmd(HT_UART0, ENABLE);
+    USART_RxCmd(HT_UART0, ENABLE);
 }
 
 
 /*************************************************************************************************************
-  * @brief  Configure the UxART
+  * @brief  Configure the USART0
   * @retval None
   ***********************************************************************************************************/
 void USART0_Configuration(void)
@@ -195,30 +197,22 @@ void USART0_Configuration(void)
            Notice that the local variable (structure) did not have an initial value.
            Please confirm that there are no missing members in the parameter settings below in this function.
         */
-        USART_InitTypeDef USART_InitStructure;
+        USART_InitTypeDef USART_InitStructure = {0};
         USART_InitStructure.USART_BaudRate = 115200;
         USART_InitStructure.USART_WordLength = USART_WORDLENGTH_8B;
         USART_InitStructure.USART_StopBits = USART_STOPBITS_1;
         USART_InitStructure.USART_Parity = USART_PARITY_NO;
         USART_InitStructure.USART_Mode = USART_MODE_NORMAL;
-        USART_Init(HTCFG_UART_PORT, &USART_InitStructure);
+        USART_Init(HT_USART0, &USART_InitStructure);
     }
 
-#if 0 // Enable UxART TX DMA when Start Tx
-    /* Enable UxART TX trigger DMA                                                                            */
-    USART_PDMACmd(HTCFG_UART_PORT, USART_PDMAREQ_TX, ENABLE);
-#endif
-
-    /* Enable UxART RX trigger DMA                                                                            */
-    USART_PDMACmd(HTCFG_UART_PORT, USART_PDMAREQ_RX, ENABLE);
-
     /* Enable UxART Tx and Rx function                                                                        */
-    USART_TxCmd(HTCFG_UART_PORT, ENABLE);
-    USART_RxCmd(HTCFG_UART_PORT, ENABLE);
+    USART_TxCmd(HT_USART0, ENABLE);
+    USART_RxCmd(HT_USART0, ENABLE);
 }
 
 /*********************************************************************************************************//**
-  * @brief  Configure the UART1.
+  * @brief  Configure the USART1
   * @retval None
   ***********************************************************************************************************/
 void UxART1_Configuration(void)
@@ -270,7 +264,7 @@ void UxART1_Configuration(void)
   * @param  Data: the data to be transmitted.
   * @retval None
   ***********************************************************************************************************/
-void UxART0_TxSend(u16 Data)
+void USART0_Send_Char(u16 Data)
 {
     while (USART_GetFlagStatus(HT_USART0, USART_FLAG_TXC) == RESET);
     USART_SendData(HT_USART0, Data);
@@ -291,13 +285,13 @@ void UxART1_TxSend(u16 Data)
   * @brief  UxART Tx Test.
   * @retval None
   ***********************************************************************************************************/
-void UxART0_Tx(char* input_string)
+void USART0_Send(char* input_string)
 {
     int i;
     /* Send a buffer from UxART to terminal                                                                   */
     for (i = 0; i < strlen(input_string); i++)
     {
-        UxART0_TxSend(input_string[i]);
+        USART0_Send_Char(input_string[i]);
     }
 }
 
