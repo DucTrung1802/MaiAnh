@@ -65,30 +65,20 @@
 
 
 /* Settings ------------------------------------------------------------------------------------------------*/
-#define RX_BUFFER_SIZE                            (64)
-#define RX_FULL_CHECK                             (0)
+
+
 
 /* Private types -------------------------------------------------------------------------------------------*/
 /* Private constants ---------------------------------------------------------------------------------------*/
 /* Private function prototypes -----------------------------------------------------------------------------*/
-void PDMA_Configuration(void);
-void UxART_Configuration(void);
-u32 UxART_PDMA_Tx(uc8 *TxBuffer, u32 length);
-u32 UxART_PDMA_RxReadByte(u8* pBuf);
-u32 UxART_PDMA_RxReadBlock(u8* pBuf, u32 uLen);
-u32 UxART_PDMA_RxGetLength(void);
-u32 UxART_PDMA_RxIsFull(void);
-void UxART_RxMainRoutine(void);
 
+void UxART0_Configuration(void);
 void UxART0_TxSend(u16 Data);
 void UxART0_Tx(char* input_string);
 
 void UxART1_Configuration(void);
 void UxART1_TxSend(u16 Data);
 void UxART1_Tx(char* input_string);
-void UxART1_RxTest_Block(void);
-void UxART1_RxTest_NonBlock(void);
-
 
 void LED_Init(void);
 void LED_Toggle(void);
@@ -96,25 +86,11 @@ void LED_Toggle(void);
 static void __Delay(u32 count);
 
 /* Private macro -------------------------------------------------------------------------------------------*/
-#define GetRxBufferReadIndex()                    gRxBufferReadIndex
-#define GetRxBufferWriteIndex()                   (RX_BUFFER_SIZE - HTCFG_PDMA_CURRENT_TRANSFER_SIZE)
-#define IsRxBufferEmpty()                         (GetRxBufferWriteIndex() == GetRxBufferReadIndex())
-#define IsRxBufferFull()                          ((GetRxBufferWriteIndex() + 1) == RX_BUFFER_SIZE ? (0 == GetRxBufferReadIndex()) : ((GetRxBufferWriteIndex() + 1) == GetRxBufferReadIndex()))
+
+
 
 /* Global variables ----------------------------------------------------------------------------------------*/
-PDMACH_InitTypeDef gPDMACH_TxStructure;
-PDMACH_InitTypeDef gPDMACH_RxStructure;
 
-vu32 gIsUxART_PDMA_TxBusy = FALSE;
-
-u8 gRxBuffer[RX_BUFFER_SIZE];
-
-/* Private variables ---------------------------------------------------------------------------------------*/
-u32 gRxBufferReadIndex = 0;
-//uc8 gHelloString[] = "Hello, this is USART Tx/Rx PDMA example. Please enter characters.....\r\n";
-uc8 gHelloString[] = "AT\r\n";
-
-u8 gTempBuffer[64];
 
 /* Global functions ----------------------------------------------------------------------------------------*/
 /*********************************************************************************************************//**
@@ -125,84 +101,23 @@ int main(void)
 {
   LED_Init();
 	LED_Toggle();
-  PDMA_Configuration();
-  UxART_Configuration();
+  UxART0_Configuration();
 	UxART1_Configuration();
 	
 	UxART0_Tx((char*)"AT\r\n");
 	UxART1_Tx((char*)"AT\r\n");
-//	UxART1_Tx((char*)"Chao cong chua");
-	
-//	/* Send "Hello, world!" over UART1 */
-//  char *message = "Start to send AT command\r\n";
-//  while (*message) {
-//    USART_SendData(HT_USART1, (uint8_t)*message++);
-//    while (USART_GetFlagStatus(HT_USART1, USART_FLAG_TXE) == RESET);
-//  }
-
-//  /* Send hello information by PDMA mode      */
-//	UxART_PDMA_Tx((uc8*)"Chao cong chua", sizeof((uc8*)"Chao cong chua") - 1);
-//  UxART_PDMA_Tx(gHelloString, sizeof(gHelloString) - 1);
 
   while (1)
   {
-//    UxART_RxMainRoutine();
-//		__Delay(10000000);
+		
   }
-	LED_Toggle();
-}
-
-/*********************************************************************************************************//**
-  * @brief  Configure the PDMA.
-  * @retval None
-  ***********************************************************************************************************/
-void PDMA_Configuration(void)
-{
-  /* Enable peripheral clock of PDMA                                                                        */
-  CKCU_PeripClockConfig_TypeDef CKCUClock = {{0}};
-  CKCUClock.Bit.PDMA   = 1;
-  CKCU_PeripClockConfig(CKCUClock, ENABLE);
-
-  /* Tx PDMA channel configuration                                                                          */
-  gPDMACH_TxStructure.PDMACH_SrcAddr = (u32)NULL;
-  gPDMACH_TxStructure.PDMACH_DstAddr = (u32)&HTCFG_UART_PORT->DR;
-  gPDMACH_TxStructure.PDMACH_BlkCnt = 0;
-  gPDMACH_TxStructure.PDMACH_BlkLen = 1;
-  gPDMACH_TxStructure.PDMACH_DataSize = WIDTH_8BIT;
-  gPDMACH_TxStructure.PDMACH_Priority = M_PRIO;
-  gPDMACH_TxStructure.PDMACH_AdrMod = SRC_ADR_LIN_INC | DST_ADR_FIX;
-  #if 0 // Config and Enable DMA when Start Tx
-  PDMA_Config(HTCFG_TX_PDMA_CH, &gPDMACH_TxStructure);
-  PDMA_EnaCmd(HTCFG_TX_PDMA_CH, ENABLE);
-  #endif
-  PDMA_IntConfig(HTCFG_TX_PDMA_CH, PDMA_INT_GE | PDMA_INT_TC, ENABLE);
-
-  /* Rx PDMA channel configuration                                                                          */
-  gPDMACH_RxStructure.PDMACH_SrcAddr = (u32)&HTCFG_UART_PORT->DR;
-  gPDMACH_RxStructure.PDMACH_DstAddr = (u32)gRxBuffer;
-  gPDMACH_RxStructure.PDMACH_BlkCnt = RX_BUFFER_SIZE;
-  gPDMACH_RxStructure.PDMACH_BlkLen = 1;
-  gPDMACH_RxStructure.PDMACH_DataSize = WIDTH_8BIT;
-  gPDMACH_RxStructure.PDMACH_Priority = H_PRIO;
-  gPDMACH_RxStructure.PDMACH_AdrMod = SRC_ADR_FIX | DST_ADR_LIN_INC | AUTO_RELOAD;
-  PDMA_Config(HTCFG_RX_PDMA_CH, &gPDMACH_RxStructure);
-  PDMA_EnaCmd(HTCFG_RX_PDMA_CH, ENABLE);
-  #if 0 // Auto Reload by PDMA
-  PDMA_IntConfig(HTCFG_RX_PDMA_CH, PDMA_INT_GE | PDMA_INT_TC, ENABLE);
-  #endif
-
-  #if (RX_FULL_CHECK == 1)
-  PDMA_IntConfig(HTCFG_RX_PDMA_CH, PDMA_INT_GE | PDMA_INT_BE, ENABLE);
-  #endif
-
-  NVIC_EnableIRQ(HTCFG_PDMA_IRQ);
 }
 
 /*************************************************************************************************************
   * @brief  Configure the UxART
   * @retval None
   ***********************************************************************************************************/
-void UxART_Configuration(void)
+void UxART0_Configuration(void)
 {
   #if 0 // Use following function to configure the IP clock speed.
   // The UxART IP clock speed must be faster 16x then the baudrate.
@@ -256,160 +171,6 @@ void UxART_Configuration(void)
   /* Enable UxART Tx and Rx function                                                                        */
   USART_TxCmd(HTCFG_UART_PORT, ENABLE);
   USART_RxCmd(HTCFG_UART_PORT, ENABLE);
-}
-
-///*********************************************************************************************************//**
-//  * @brief  UxART send a buffer by PDMA.
-//  * @retval None
-//  ***********************************************************************************************************/
-//u32 UxART_PDMA_Tx(uc8 *TxBuffer, u32 length)
-//{
-//	u32 i;
-//	
-//	/* UART0 - MCU TO MODULE */
-//  /* Wait until previou Tx finished                                                                         */
-//  while (gIsUxART_PDMA_TxBusy == TRUE);
-
-//  /* UxART Tx PDMA channel configuration                                                                    */
-//  gPDMACH_TxStructure.PDMACH_SrcAddr = (u32)TxBuffer;
-//  gPDMACH_TxStructure.PDMACH_BlkCnt = length;
-//  PDMA_Config(HTCFG_TX_PDMA_CH, &gPDMACH_TxStructure);
-//  PDMA_EnaCmd(HTCFG_TX_PDMA_CH, ENABLE);
-
-//  gIsUxART_PDMA_TxBusy = TRUE;
-//  USART_PDMACmd(HTCFG_UART_PORT, USART_PDMAREQ_TX, ENABLE);
-
-//	/* UART1 - MCU TO PC */
-//	/* Send a buffer from UxART1 to terminal                                                                   */
-//  for (i = 0; i < length; i++)
-//  {
-//    UxART1_TxSend(TxBuffer[i]);
-//  }
-//	gIsUxART_PDMA_TxBusy = FALSE;
-//  return length;
-//}
-
-/*********************************************************************************************************//**
-  * @brief  Read byte from Rx buffer.
-  * @retval 0: No Data, 1 Read Success
-  ***********************************************************************************************************/
-u32 UxART_PDMA_RxReadByte(u8 *pBuf)
-{
-  if (IsRxBufferEmpty())
-  {
-    return 0;
-  }
-  else
-  {
-    *pBuf = gRxBuffer[gRxBufferReadIndex++];
-    if (gRxBufferReadIndex == RX_BUFFER_SIZE)
-    {
-      gRxBufferReadIndex = 0;
-    }
-    return 1;
-  }
-}
-
-/*********************************************************************************************************//**
-  * @brief  Read block from Rx buffer.
-  * @retval Data length
-  ***********************************************************************************************************/
-u32 UxART_PDMA_RxReadBlock(u8 *pBuf, u32 uLen)
-{
-  u32 i = 0;
-  for (i = 0; i < uLen; i++)
-  {
-    if (IsRxBufferEmpty())
-    {
-      break;
-    }
-    *pBuf++ = gRxBuffer[gRxBufferReadIndex++];
-    if (gRxBufferReadIndex == RX_BUFFER_SIZE)
-    {
-      gRxBufferReadIndex = 0;
-    }
-  }
-  return i;
-}
-
-/*********************************************************************************************************//**
-  * @brief  Get Rx data length.
-  * @retval Data length
-  ***********************************************************************************************************/
-u32 UxART_PDMA_RxGetLength(void)
-{
-  u32 uWrite = GetRxBufferWriteIndex();
-  u32 uRead = GetRxBufferReadIndex();
-
-  if (uWrite >= uRead)
-  {
-    return (uWrite - uRead);
-  }
-  else
-  {
-    return (RX_BUFFER_SIZE - uRead + uWrite);
-  }
-}
-
-/*********************************************************************************************************//**
-  * @brief  Check Rx is full or not.
-  * @retval 0: Rx is not full, 1: Rx is full
-  ***********************************************************************************************************/
-u32 UxART_PDMA_RxIsFull(void)
-{
-  return (IsRxBufferFull());
-}
-
-/*********************************************************************************************************//**
-  * @brief  UxART Rx Main Routine.
-  * @retval None
-  ***********************************************************************************************************/
-void UxART_RxMainRoutine(void)
-{
-	/* Send hello information by PDMA mode                                                                    */
-//  UxART_PDMA_Tx(gHelloString, sizeof(gHelloString) - 1);
-	
-//	u32 i;
-//	u8 *uPtr = (u8*)gTempBuffer;
-//	u32 uLen = sizeof(gTempBuffer) - 1;
-//	
-//	while (UxART_PDMA_RxReadByte(gTempBuffer)){
-//  #if 1
-//  if (UxART_PDMA_RxReadByte(gTempBuffer)) // Process data after 1 byte received
-//  {
-//    // Do data process here
-
-//    #if 1 // Loopback Rx data to Tx
-//    //UxART_PDMA_Tx((uc8 *)&gTempBuffer, 1);
-//		/* UART1 - MCU TO PC */
-//		/* Send a buffer from UxART1 to terminal                                                                   */
-////		for (i = 0; i < uLen; i++)
-////		{
-////			UxART1_TxSend(gTempBuffer[i]);
-////		}
-//		
-//		UxART1_TxSend(gTempBuffer[0]);
-
-////		for (i = 0; i < uLen; i++)
-////		{
-////			uPtr[i] = 0;
-////		}
-//    #endif
-//  }
-//	
-//  #else
-//  if (UxART_PDMA_RxGetLength() >= 5)      // Process data after 5 byte received
-//  {
-//    u32 uLen;
-//    uLen = UxART_PDMA_RxReadBlock(gTempBuffer, UxART_PDMA_RxGetLength());
-//    // Do data process here
-
-//    #if 1 // Loopback Rx data to Tx
-//    UxART_PDMA_Tx((uc8 *)gTempBuffer, uLen);
-//    #endif
-//  }
-//  #endif
-//}
 }
 
 /*********************************************************************************************************//**
@@ -507,42 +268,6 @@ void UxART1_Tx(char* input_string)
   for (i = 0; i < strlen(input_string); i++)
   {
     UxART1_TxSend(input_string[i]);
-  }
-}
-
-/*********************************************************************************************************//**
-  * @brief  UxART Rx Test - Blocking mode.
-  * @retval None
-  ***********************************************************************************************************/
-void UxART1_RxTest_Block(void)
-{
-  u16 uData;
-
-  /* Waits until the Rx FIFO/DR is not empty then get data from them                                        */
-  while (USART_GetFlagStatus(HT_USART1, USART_FLAG_RXDR) == RESET);
-  uData = USART_ReceiveData(HT_USART1);
-
-  #if 1 // Loop back Rx data to Tx for test
-  UxART1_TxSend(uData);
-  #endif
-}
-
-/*********************************************************************************************************//**
-  * @brief  UxART Rx Test - Non-Blocking mode
-  * @retval None
-  ***********************************************************************************************************/
-void UxART1_RxTest_NonBlock(void)
-{
-  u16 uData;
-
-  /* Waits until the Rx FIFO/DR is not empty then get data from them                                        */
-  if (USART_GetFlagStatus(HT_USART1, USART_FLAG_RXDR) == SET)
-  {
-    uData = USART_ReceiveData(HT_USART1);
-
-    #if 1 // Loop back Rx data to Tx for test
-    UxART1_TxSend(uData);
-    #endif
   }
 }
 
