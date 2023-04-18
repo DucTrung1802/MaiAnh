@@ -72,7 +72,8 @@
 /* Private constants ---------------------------------------------------------------------------------------*/
 /* Private function prototypes -----------------------------------------------------------------------------*/
 
-void UxART0_Configuration(void);
+void GNSS_UART0_Configuration(void);
+
 void UxART0_TxSend(u16 Data);
 void UxART0_Tx(char* input_string);
 
@@ -113,10 +114,58 @@ int main(void)
 }
 
 /*************************************************************************************************************
+  * @brief  Configure the UART0 for GNSS
+  * @retval None
+  ***********************************************************************************************************/
+void GNSS_UART0_Configuration(void){
+		CKCU_PeripClockConfig_TypeDef CKCUClock; // Set all the fields to zero, which means that no peripheral clocks are enabled by default.
+
+	{/* Enable peripheral clock of AFIO, UxART                                                                 */
+	CKCUClock.Bit.AFIO = 1;
+	CKCUClock.Bit.PB = 1;
+	CKCUClock.Bit.UART0 = 1;
+	CKCU_PeripClockConfig(CKCUClock, ENABLE);
+	}
+	
+	/* Turn on UxART Rx internal pull up resistor to prevent unknow state                                     */
+  GPIO_PullResistorConfig(HT_GPIOB, GPIO_PIN_8, GPIO_PR_UP);
+	
+	/* Config AFIO mode as UxART function.                                                                    */
+  AFIO_GPxConfig(GPIO_PB, AFIO_PIN_7, AFIO_FUN_USART_UART);
+  AFIO_GPxConfig(GPIO_PB, AFIO_PIN_8, AFIO_FUN_USART_UART);
+	
+	{
+    /* UxART configured as follow:
+          - BaudRate = 115200 baud
+          - Word Length = 8 Bits
+          - One Stop Bit
+          - None parity bit
+    */
+
+    /* !!! NOTICE !!!
+       Notice that the local variable (structure) did not have an initial value.
+       Please confirm that there are no missing members in the parameter settings below in this function.
+    */
+    USART_InitTypeDef USART_InitStructure = {0};
+    USART_InitStructure.USART_BaudRate = 9600;
+    USART_InitStructure.USART_WordLength = USART_WORDLENGTH_8B;
+    USART_InitStructure.USART_StopBits = USART_STOPBITS_1;
+    USART_InitStructure.USART_Parity = USART_PARITY_NO;
+    USART_InitStructure.USART_Mode = USART_MODE_NORMAL;
+    USART_Init(HT_UART0, &USART_InitStructure);
+  }
+	
+	/* Enable UxART Tx and Rx function                                                                        */
+  USART_TxCmd(HT_UART0, ENABLE);
+  USART_RxCmd(HT_UART0, ENABLE);
+}
+
+
+/*************************************************************************************************************
   * @brief  Configure the UxART
   * @retval None
   ***********************************************************************************************************/
-void UxART0_Configuration(void)
+void USART0_Configuration(void)
 {
     CKCU_PeripClockConfig_TypeDef CKCUClock; // Set all the fields to zero, which means that no peripheral clocks are enabled by default.
 
