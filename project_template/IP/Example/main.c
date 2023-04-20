@@ -32,24 +32,6 @@
 
 #include "string.h"
 
-#define USART_FLAG_TXE ((u16)0x0080)
-#define USART_FLAG_RXNE ((uint16_t)0x0020)
-
-#define HTCFG_UART_PORT 									HT_USART0
-#define HTCFG_TX_PDMA_CH 									PDMA_USART0_TX
-#define HTCFG_RX_PDMA_CH 									PDMA_USART0_RX
-#define HTCFG_PDMA_IRQ 										PDMACH0_1_IRQn
-#define HTCFG_PDMA_IRQHandler             (PDMA_CH0_1_IRQHandler)
-#define HTCFG_UART_RX_GPIO_CLK 						PA
-#define HTCFG_UART_IPN										USART0
-#define HTCFG_UART_RX_GPIO_PORT 					HT_GPIOA
-#define HTCFG_UART_RX_GPIO_PIN  					GPIO_PIN_3
-#define HTCFG_UART_TX_GPIO_ID							GPIO_PA
-#define HTCFG_UART_TX_AFIO_PIN						AFIO_PIN_2
-#define HTCFG_UART_RX_GPIO_ID							GPIO_PA
-#define HTCFG_UART_RX_AFIO_PIN						AFIO_PIN_3
-#define HTCFG_PDMA_CURRENT_TRANSFER_SIZE  (HT_PDMA->PDMACH0.CTSR >> 16)
-
 
 /** @addtogroup Project_Template Project Template
   * @{
@@ -78,9 +60,9 @@ void USART0_Configuration(void);
 void USART0_Send_Char(u16 Data);
 void USART0_Send(char* input_string);
 
-void UxART1_Configuration(void);
-void UxART1_TxSend(u16 Data);
-void UxART1_Tx(char* input_string);
+void USART1_Configuration(void);
+void USART1_Send_Char(u16 Data);
+void USART1_Send(char* input_string);
 
 void LED_Init(void);
 void LED_Toggle(void);
@@ -104,10 +86,10 @@ int main(void)
     LED_Toggle();
     GNSS_UART0_Configuration();
     USART0_Configuration();
-    UxART1_Configuration();
+    USART1_Configuration();
 
     USART0_Send((char*)"AT\r\n");
-    UxART1_Tx((char*)"AT\r\n");
+    USART1_Send((char*)"AT\r\n");
 
     while (1)
     {
@@ -215,7 +197,7 @@ void USART0_Configuration(void)
   * @brief  Configure the USART1
   * @retval None
   ***********************************************************************************************************/
-void UxART1_Configuration(void)
+void USART1_Configuration(void)
 {
     CKCU_PeripClockConfig_TypeDef CKCUClock; // Set all the fields to zero, which means that no peripheral clocks are enabled by default.
 
@@ -275,7 +257,7 @@ void USART0_Send_Char(u16 Data)
   * @param  Data: the data to be transmitted.
   * @retval None
   ***********************************************************************************************************/
-void UxART1_TxSend(u16 Data)
+void USART1_Send_Char(u16 Data)
 {
     while (USART_GetFlagStatus(HT_USART1, USART_FLAG_TXC) == RESET);
     USART_SendData(HT_USART1, Data);
@@ -299,13 +281,13 @@ void USART0_Send(char* input_string)
   * @brief  UxART Tx Test.
   * @retval None
   ***********************************************************************************************************/
-void UxART1_Tx(char* input_string)
+void USART1_Send(char* input_string)
 {
     int i;
     /* Send a buffer from UxART to terminal                                                                   */
     for (i = 0; i < strlen(input_string); i++)
     {
-        UxART1_TxSend(input_string[i]);
+        USART1_Send_Char(input_string[i]);
     }
 }
 
