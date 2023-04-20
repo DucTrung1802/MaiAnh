@@ -47,8 +47,6 @@
 
 
 /* Settings ------------------------------------------------------------------------------------------------*/
-#define RX_BUFFER_SIZE                            (64)
-#define RX_FULL_CHECK                             (0)
 
 /* Private types -------------------------------------------------------------------------------------------*/
 /* Private constants ---------------------------------------------------------------------------------------*/
@@ -63,6 +61,9 @@ void USART0_Send(char* input_string);
 void USART1_Configuration(void);
 void USART1_Send_Char(u16 Data);
 void USART1_Send(char* input_string);
+
+void USART0_Rx_Block(void);
+void USART0_Rx_NonBlock(void);
 
 void LED_Init(void);
 void LED_Toggle(void);
@@ -289,6 +290,34 @@ void USART1_Send(char* input_string)
     {
         USART1_Send_Char(input_string[i]);
     }
+}
+
+void USART0_Rx_Block(void)
+{
+  u16 uData;
+
+  /* Waits until the Rx FIFO/DR is not empty then get data from them                                        */
+  while (USART_GetFlagStatus(HT_USART0, USART_FLAG_RXDR) == RESET);
+  uData = USART_ReceiveData(HT_USART0);
+
+  #if 1 // Loop back Rx data to Tx for test
+  USART0_Send(uData);
+  #endif
+}
+
+void USART0_Rx_NonBlock(void)
+{
+  u16 uData;
+
+  /* Waits until the Rx FIFO/DR is not empty then get data from them                                        */
+  if (USART_GetFlagStatus(HT_USART0, USART_FLAG_RXDR) == SET)
+  {
+    uData = USART_ReceiveData(HT_USART0);
+
+    #if 1 // Loop back Rx data to Tx for test
+    USART0_Send(uData);
+    #endif
+  }
 }
 
 void LED_Init()
