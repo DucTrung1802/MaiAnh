@@ -30,8 +30,8 @@
 #include "ht32.h"
 #include "ht32_board.h"
 
+#include "stdlib.h"
 #include "string.h"
-
 
 /** @addtogroup Project_Template Project Template
   * @{
@@ -47,9 +47,21 @@
 
 
 /* Settings ------------------------------------------------------------------------------------------------*/
+struct Meimei
+{
+		/* Debug */
+		char *log_content;
+} Meimei;
+
 
 /* Private types -------------------------------------------------------------------------------------------*/
 /* Private constants ---------------------------------------------------------------------------------------*/
+
+#define LOG_CONTENT_SIZE 500
+
+
+
+
 /* Private function prototypes -----------------------------------------------------------------------------*/
 
 void UART0_GNSS_Configuration(void);
@@ -68,13 +80,13 @@ void LED_Toggle(void);
 
 static void __Delay(u32 count);
 
-void setup(void);
+void setup(struct Meimei *self);
 
 /* Private macro -------------------------------------------------------------------------------------------*/
 
 
 /* Global variables ----------------------------------------------------------------------------------------*/
-
+struct Meimei meimei_h;
 
 /* Global functions ----------------------------------------------------------------------------------------*/
 
@@ -82,11 +94,19 @@ void setup(void);
   * @brief  Main program.
   * @retval None
   ***********************************************************************************************************/
-void setup(void)
+void setup(struct Meimei *self)
 {
+		/* Initialize UART ports */
 		UART0_GNSS_Configuration();
     USART0_MODULE_Configuration();
     USART1_DEBUG_Configuration();
+	
+		/* Initialize Meimei_handler */
+		self->log_content = (char*) malloc (LOG_CONTENT_SIZE * sizeof(char));
+		if (!self->log_content) {
+			/* toggle led quickly */
+			while (1);
+		}
 }
 
 /********************************************************************************************************//*
@@ -95,7 +115,7 @@ void setup(void)
   ***********************************************************************************************************/
 int main(void)
 {
-		setup();
+		setup(&meimei_h);
 
     USART0_Send((char*)"AT\r\n");
     USART1_Send((char*)"AT\r\n");
