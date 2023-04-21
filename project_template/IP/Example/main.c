@@ -65,7 +65,7 @@ struct Meimei {
 
 /* Private constants ---------------------------------------------------------------------------------------*/
 #define LOG_CONTENT_SIZE 100
-#define COMMAND_TIMEOUT_MS 1000
+#define COMMAND_TIMEOUT_MS 50
 #define COMMAND_SIZE 100
 #define MODULE_BUFFER_SIZE 100
 
@@ -114,10 +114,10 @@ vu32 utick = 0;
  * @retval None
  ***********************************************************************************************************/
 int main(void) {
-  setup( & meimei_h);
+  setup(&meimei_h);
 
   while (1) {
-    loop( & meimei_h);
+    loop(&meimei_h);
   }
 }
 
@@ -162,19 +162,27 @@ void setup(struct Meimei * self) {
 }
 
 void loop(struct Meimei * self) {
-		
+		sprintf(self->command, "AT");
+		sendCommand(self);
+		delay_ms(500);
 }
 
 void sendCommand(struct Meimei * self) {
-		self->command_timer = utick;
 		clearModuleBuffer(self);
 	
-		USART0_Send(self->log_content);
+		USART0_Send(self->command);
 		USART0_Send((char *)"\r\n");
 
+		self->command_timer = utick;
+		sprintf(self->log_content, "\n%ul\n", utick);
+		writeLog(self);
 		while(utick - self->command_timer <= COMMAND_TIMEOUT_MS) {
 				USART0_Receive(self);
 		}
+		sprintf(self->log_content, "\n%ul\n", utick);
+		writeLog(self);
+		
+		USART0_Send(self->module_buffer);
 }
 
 void clearModuleBuffer(struct Meimei *self) {
