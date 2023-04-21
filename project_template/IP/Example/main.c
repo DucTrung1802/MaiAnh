@@ -59,12 +59,11 @@ struct Meimei
 
 #define LOG_CONTENT_SIZE 500
 
-
-
-
 /* Private function prototypes -----------------------------------------------------------------------------*/
 
+/* UART ports */
 void UART0_GNSS_Configuration(void);
+void UART0_Receive(void);
 
 void USART0_MODULE_Configuration(void);
 void USART0_Send_Char(u16 Data);
@@ -74,6 +73,7 @@ void USART0_Receive(void);
 void USART1_DEBUG_Configuration(void);
 void USART1_Send_Char(u16 Data);
 void USART1_Send(char* input_string);
+void USART1_Receive(void);
 
 void LED_Init(void);
 void LED_Toggle(void);
@@ -82,6 +82,11 @@ static void __Delay(u32 count);
 
 void setup(struct Meimei *self);
 
+void loop(struct Meimei *self);
+
+/* Debug */
+void writeLog (struct Meimei *self);
+
 /* Private macro -------------------------------------------------------------------------------------------*/
 
 
@@ -89,6 +94,13 @@ void setup(struct Meimei *self);
 struct Meimei meimei_h;
 
 /* Global functions ----------------------------------------------------------------------------------------*/
+
+/* Debug */
+void writeLog(struct Meimei *self)
+{
+		USART1_Send(self->log_content);
+}
+
 
 /********************************************************************************************************//*
   * @brief  Main program.
@@ -107,6 +119,14 @@ void setup(struct Meimei *self)
 			/* toggle led quickly */
 			while (1);
 		}
+		
+		sprintf(self->log_content, "Setup successfully!\n");
+		writeLog(self);
+}
+
+void loop(struct Meimei *self)
+{
+	
 }
 
 /********************************************************************************************************//*
@@ -117,12 +137,9 @@ int main(void)
 {
 		setup(&meimei_h);
 
-    USART0_Send((char*)"AT\r\n");
-    USART1_Send((char*)"AT\r\n");
-
 		while (1)
 		{
-				USART0_Receive();    
+				USART1_Receive();
 		}
 }
 
@@ -320,6 +337,21 @@ void USART1_Send(char* input_string)
     }
 }
 
+void UART0_Receive(void)
+{
+	  u16 uData;
+
+  /* Waits until the Rx FIFO/DR is not empty then get data from them                                        */
+  if (USART_GetFlagStatus(HT_UART0, USART_FLAG_RXDR) == SET)
+  {
+    uData = USART_ReceiveData(HT_UART0);
+
+    #if 1 // Loop back Rx data to Tx for test
+    USART1_Send_Char(uData);
+    #endif
+  }
+}
+
 void USART0_Receive(void)
 {
   u16 uData;
@@ -330,7 +362,22 @@ void USART0_Receive(void)
     uData = USART_ReceiveData(HT_USART0);
 
     #if 1 // Loop back Rx data to Tx for test
-    USART0_Send_Char(uData);
+    USART1_Send_Char(uData);
+    #endif
+  }
+}
+
+void USART1_Receive(void)
+{
+  u16 uData;
+
+  /* Waits until the Rx FIFO/DR is not empty then get data from them                                        */
+  if (USART_GetFlagStatus(HT_USART1, USART_FLAG_RXDR) == SET)
+  {
+    uData = USART_ReceiveData(HT_USART1);
+
+    #if 1 // Loop back Rx data to Tx for test
+    USART1_Send_Char(uData);
     #endif
   }
 }
