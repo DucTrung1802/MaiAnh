@@ -65,7 +65,7 @@ struct Meimei {
 
 /* Private constants ---------------------------------------------------------------------------------------*/
 #define LOG_CONTENT_SIZE 100
-#define COMMAND_TIMEOUT_MS 50
+#define COMMAND_TIMEOUT_MS 500
 #define COMMAND_SIZE 100
 #define MODULE_BUFFER_SIZE 100
 
@@ -128,7 +128,7 @@ int main(void) {
  ***********************************************************************************************************/
 void setup(struct Meimei * self) {
   /* Initialize system tick */
-  SysTick_Config(SystemCoreClock / 100);
+  SysTick_Config(SystemCoreClock / 1000);
 	
 	/* Initialize LED */
 	LED_Init();
@@ -492,7 +492,7 @@ void assert_error(u8 * filename, u32 uline) {
 static void delay_ms(u32 ms) {
   uint32_t i, j;
   for (i = 0; i < ms; i++) {
-    for (j = 0; j < 32000; j++) {
+    for (j = 0; j < 11950; j++) {
       __NOP();
     }
   }
