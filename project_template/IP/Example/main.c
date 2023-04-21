@@ -168,21 +168,23 @@ void loop(struct Meimei * self) {
 }
 
 void sendCommand(struct Meimei * self) {
-		clearModuleBuffer(self);
 	
+		sprintf(self->log_content, "\n=== SENDING <%s> ===\n", self->command);
+		writeLog(self);
+	
+		clearModuleBuffer(self);
+		
 		USART0_Send(self->command);
 		USART0_Send((char *)"\r\n");
 
 		self->command_timer = utick;
-		sprintf(self->log_content, "\n%ul\n", utick);
-		writeLog(self);
 		while(utick - self->command_timer <= COMMAND_TIMEOUT_MS) {
 				USART0_Receive(self);
 		}
-		sprintf(self->log_content, "\n%ul\n", utick);
+		sprintf(self->log_content, "%s\n", self->module_buffer);
 		writeLog(self);
-		
-		USART0_Send(self->module_buffer);
+		sprintf(self->log_content, "==========\n");
+		writeLog(self);
 }
 
 void clearModuleBuffer(struct Meimei *self) {
