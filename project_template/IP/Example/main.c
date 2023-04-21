@@ -52,23 +52,23 @@
 /* Private constants ---------------------------------------------------------------------------------------*/
 /* Private function prototypes -----------------------------------------------------------------------------*/
 
-void GNSS_UART0_Configuration(void);
+void UART0_GNSS_Configuration(void);
 
-void USART0_Configuration(void);
+void USART0_MODULE_Configuration(void);
 void USART0_Send_Char(u16 Data);
 void USART0_Send(char* input_string);
+void USART0_Receive(void);
 
-void USART1_Configuration(void);
+void USART1_DEBUG_Configuration(void);
 void USART1_Send_Char(u16 Data);
 void USART1_Send(char* input_string);
-
-void USART0_Rx_Block(void);
-void USART0_Rx_NonBlock(void);
 
 void LED_Init(void);
 void LED_Toggle(void);
 
 static void __Delay(u32 count);
+
+void setup(void);
 
 /* Private macro -------------------------------------------------------------------------------------------*/
 
@@ -77,32 +77,40 @@ static void __Delay(u32 count);
 
 
 /* Global functions ----------------------------------------------------------------------------------------*/
+
+/********************************************************************************************************//*
+  * @brief  Main program.
+  * @retval None
+  ***********************************************************************************************************/
+void setup(void)
+{
+		UART0_GNSS_Configuration();
+    USART0_MODULE_Configuration();
+    USART1_DEBUG_Configuration();
+}
+
 /********************************************************************************************************//*
   * @brief  Main program.
   * @retval None
   ***********************************************************************************************************/
 int main(void)
 {
-    LED_Init();
-    LED_Toggle();
-    GNSS_UART0_Configuration();
-    USART0_Configuration();
-    USART1_Configuration();
+		setup();
 
     USART0_Send((char*)"AT\r\n");
     USART1_Send((char*)"AT\r\n");
 
-  while (1)
-  {
-			USART0_Rx_NonBlock();    
-  }
+		while (1)
+		{
+				USART0_Receive();    
+		}
 }
 
 /*************************************************************************************************************
   * @brief  Configure the UART0 for GNSS
   * @retval None
   ***********************************************************************************************************/
-void GNSS_UART0_Configuration(void) {
+void UART0_GNSS_Configuration(void) {
     CKCU_PeripClockConfig_TypeDef CKCUClock; // Set all the fields to zero, which means that no peripheral clocks are enabled by default.
 
     {   /* Enable peripheral clock of AFIO, UxART                                                                 */
@@ -150,7 +158,7 @@ void GNSS_UART0_Configuration(void) {
   * @brief  Configure the USART0
   * @retval None
   ***********************************************************************************************************/
-void USART0_Configuration(void)
+void USART0_MODULE_Configuration(void)
 {
     CKCU_PeripClockConfig_TypeDef CKCUClock; // Set all the fields to zero, which means that no peripheral clocks are enabled by default.
 
@@ -198,7 +206,7 @@ void USART0_Configuration(void)
   * @brief  Configure the USART1
   * @retval None
   ***********************************************************************************************************/
-void USART1_Configuration(void)
+void USART1_DEBUG_Configuration(void)
 {
     CKCU_PeripClockConfig_TypeDef CKCUClock; // Set all the fields to zero, which means that no peripheral clocks are enabled by default.
 
@@ -292,20 +300,7 @@ void USART1_Send(char* input_string)
     }
 }
 
-void USART0_Rx_Block(void)
-{
-  u16 uData;
-
-  /* Waits until the Rx FIFO/DR is not empty then get data from them                                        */
-  while (USART_GetFlagStatus(HT_USART0, USART_FLAG_RXDR) == RESET);
-  uData = USART_ReceiveData(HT_USART0);
-
-  #if 1 // Loop back Rx data to Tx for test
-  USART0_Send_Char(uData);
-  #endif
-}
-
-void USART0_Rx_NonBlock(void)
+void USART0_Receive(void)
 {
   u16 uData;
 
