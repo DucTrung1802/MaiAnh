@@ -58,12 +58,15 @@ struct Meimei {
 	char *command;
 	u16 module_buffer_index;
 	char *module_buffer;
+	bool module_buffer_received;
 } Meimei;
 
 /* Private types -------------------------------------------------------------------------------------------*/
 
 
 /* Private constants ---------------------------------------------------------------------------------------*/
+const char *SUCCESS_COMMAND_SIGN[] = { "OK\r\n", "\r\n\r\n" };
+
 #define LOG_CONTENT_SIZE 100
 #define COMMAND_TIMEOUT_MS 500
 #define COMMAND_SIZE 100
@@ -99,6 +102,7 @@ void clearModuleBuffer(struct Meimei *self);
 
 /* Debug */
 void writeLog(struct Meimei * self);
+void clearLogContent(struct Meimei *self);
 
 /* Private macro -------------------------------------------------------------------------------------------*/
 
@@ -156,6 +160,8 @@ void setup(struct Meimei * self) {
     Toggle_LED_1();
     while (1);
   }
+	
+	clearLogContent(self);
 
   sprintf(self -> log_content, "Setup successfully!\n");
   writeLog(self);
@@ -173,16 +179,13 @@ void sendCommand(struct Meimei * self) {
 		USART0_Send(self->command);
 		USART0_Send((char *)"\r\n");
 
-		self->command_timer = utick;
-		sprintf(self->log_content, "\n%ul\n", utick);
-		writeLog(self);
 		while(utick - self->command_timer <= COMMAND_TIMEOUT_MS) {
 				USART0_Receive(self);
+//				if (self->module_buffer_received){
+//						break;
+//				}
 		}
-		sprintf(self->log_content, "\n%ul\n", utick);
-		writeLog(self);
-		
-		USART0_Send(self->module_buffer);
+		USART1_Send(self->module_buffer);
 }
 
 void clearModuleBuffer(struct Meimei *self) {
@@ -190,12 +193,21 @@ void clearModuleBuffer(struct Meimei *self) {
 				self->module_buffer[self->module_buffer_index] = 0;
 		}
 		self->module_buffer_index = 0;
+		self->module_buffer_received = false;
 }
 
 
 /* Debug */
-void writeLog(struct Meimei * self) {
+void writeLog(struct Meimei*self) {
   USART1_Send(self -> log_content);
+}
+
+void clearLogContent(struct Meimei *self){
+		u16 index;
+		for (index = 0; index < LOG_CONTENT_SIZE; index++) {
+				self->log_content[index] = 0;
+		}
+		self->module_buffer_index = 0;
 }
 
 /*************************************************************************************************************
@@ -414,16 +426,25 @@ void UART0_Receive(void) {
 }
 
 void USART0_Receive(struct Meimei *self) {
-  u16 uData;
-
-  /* Waits until the Rx FIFO/DR is not empty then get data from them                                        */
-  if (USART_GetFlagStatus(HT_USART0, USART_FLAG_RXDR) == SET) {
-    uData = USART_ReceiveData(HT_USART0);
-		self->module_buffer[self->module_buffer_index] = uData;
-		self->module_buffer_index++;
-  }
+		u16 uData;
+//		u8 index;
+//		char *ptr;
 	
-	/* CONTINUE: Check response OK / ERROR / ... */
+		/* Waits until the Rx FIFO/DR is not empty then get data from them                                        */
+		if (USART_GetFlagStatus(HT_USART0, USART_FLAG_RXDR) == SET) {
+			uData = USART_ReceiveData(HT_USART0);
+			self->module_buffer[self->module_buffer_index] = uData;
+			self->module_buffer_index++;
+		}
+		
+//		/* CONTINUE: Check response OK / ERROR / ... */
+//		for (index = 0; index < 2; index++){
+//				ptr = strstr(self->module_buffer, SUCCESS_COMMAND_SIGN[index]);
+//				if (ptr) {
+//						self->module_buffer_received = true;
+//						break;
+//				}
+//		}
 }
 
 void USART1_Receive(void) {
@@ -492,7 +513,7 @@ void assert_error(u8 * filename, u32 uline) {
 static void delay_ms(u32 ms) {
   uint32_t i, j;
   for (i = 0; i < ms; i++) {
-    for (j = 0; j < 32000; j++) {
+    for (j = 0; j < 11950; j++) {
       __NOP();
     }
   }
