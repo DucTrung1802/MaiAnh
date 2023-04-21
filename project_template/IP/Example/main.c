@@ -58,16 +58,20 @@ struct Meimei {
 	char *command;
 	u16 module_buffer_index;
 	char *module_buffer;
+	bool module_buffer_received;
 } Meimei;
 
 /* Private types -------------------------------------------------------------------------------------------*/
 
 
 /* Private constants ---------------------------------------------------------------------------------------*/
+const char *SUCCESS_COMMAND_SIGN[] = { "OK\r\n", "\r\n\r\n" };
+
 #define LOG_CONTENT_SIZE 100
 #define COMMAND_TIMEOUT_MS 500
 #define COMMAND_SIZE 100
 #define MODULE_BUFFER_SIZE 100
+#define SEND_COMMAND_DELAY_MS 1000
 
 
 /* Private function prototypes -----------------------------------------------------------------------------*/
@@ -164,7 +168,7 @@ void setup(struct Meimei * self) {
 void loop(struct Meimei * self) {
 		sprintf(self->command, "AT");
 		sendCommand(self);
-		delay_ms(500);
+		delay_ms(SEND_COMMAND_DELAY_MS);
 }
 
 void sendCommand(struct Meimei * self) {
@@ -180,6 +184,9 @@ void sendCommand(struct Meimei * self) {
 		self->command_timer = utick;
 		while(utick - self->command_timer <= COMMAND_TIMEOUT_MS) {
 				USART0_Receive(self);
+				if (self->module_buffer_received){
+						break;
+				}
 		}
 		sprintf(self->log_content, "%s\n", self->module_buffer);
 		writeLog(self);
@@ -192,6 +199,7 @@ void clearModuleBuffer(struct Meimei *self) {
 				self->module_buffer[self->module_buffer_index] = 0;
 		}
 		self->module_buffer_index = 0;
+		self->module_buffer_received = false;
 }
 
 
@@ -416,16 +424,25 @@ void UART0_Receive(void) {
 }
 
 void USART0_Receive(struct Meimei *self) {
-  u16 uData;
+		u16 uData;
+		u8 index;
+		char *ptr;
 
-  /* Waits until the Rx FIFO/DR is not empty then get data from them                                        */
-  if (USART_GetFlagStatus(HT_USART0, USART_FLAG_RXDR) == SET) {
-    uData = USART_ReceiveData(HT_USART0);
-		self->module_buffer[self->module_buffer_index] = uData;
-		self->module_buffer_index++;
-  }
-	
-	/* CONTINUE: Check response OK / ERROR / ... */
+		/* Waits until the Rx FIFO/DR is not empty then get data from them                                        */
+		if (USART_GetFlagStatus(HT_USART0, USART_FLAG_RXDR) == SET) {
+			uData = USART_ReceiveData(HT_USART0);
+			self->module_buffer[self->module_buffer_index] = uData;
+			self->module_buffer_index++;
+		}
+
+			/* CONTINUE: Check response OK / ERROR / ... */
+			for (index = 0; index < 2; index++){
+					ptr = strstr(self->module_buffer, SUCCESS_COMMAND_SIGN[index]);
+					if (ptr) {
+							self->module_buffer_received = true;
+							break;
+					}
+			}
 }
 
 void USART1_Receive(void) {
