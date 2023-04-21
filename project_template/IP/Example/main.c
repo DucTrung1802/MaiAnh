@@ -57,7 +57,7 @@ struct Meimei
 /* Private types -------------------------------------------------------------------------------------------*/
 /* Private constants ---------------------------------------------------------------------------------------*/
 
-#define LOG_CONTENT_SIZE 500
+#define LOG_CONTENT_SIZE 100
 
 /* Private function prototypes -----------------------------------------------------------------------------*/
 
@@ -78,7 +78,7 @@ void USART1_Receive(void);
 void LED_Init(void);
 void LED_Toggle(void);
 
-static void __Delay(u32 count);
+static void delay_ms(u32 count);
 
 void setup(struct Meimei *self);
 
@@ -92,6 +92,7 @@ void writeLog (struct Meimei *self);
 
 /* Global variables ----------------------------------------------------------------------------------------*/
 struct Meimei meimei_h;
+vu32 utick = 0;
 
 /* Global functions ----------------------------------------------------------------------------------------*/
 
@@ -100,7 +101,6 @@ void writeLog(struct Meimei *self)
 {
 		USART1_Send(self->log_content);
 }
-
 
 /********************************************************************************************************//*
   * @brief  Main program.
@@ -126,7 +126,8 @@ void setup(struct Meimei *self)
 
 void loop(struct Meimei *self)
 {
-	
+		USART0_Send((char*)"AT\r\n");
+		USART0_Receive();
 }
 
 /********************************************************************************************************//*
@@ -135,11 +136,17 @@ void loop(struct Meimei *self)
   ***********************************************************************************************************/
 int main(void)
 {
+		SysTick->VAL;
 		setup(&meimei_h);
+		USART0_Send((char*)"AT\r\n");
 
+		SysTick_Config(SystemCoreClock / 100);
+	
 		while (1)
 		{
-				USART1_Receive();
+			printf("%ul\n", utick);
+			delay_ms(1000);
+//			USART0_Receive();
 		}
 }
 
@@ -321,6 +328,9 @@ void USART0_Send(char* input_string)
     {
         USART0_Send_Char(input_string[i]);
     }
+		
+		/* Send to USART1 what sent to USART0 */
+		USART1_Send(input_string);
 }
 
 /********************************************************************************************************//*
@@ -397,7 +407,7 @@ void LED_Toggle()
     s32 input;
     for (input = 0; input < 10; input++)
     {
-        __Delay(2000000);
+        delay_ms(10000);
         HT32F_DVB_LEDToggle(HT_LED1);
         HT32F_DVB_LEDToggle(HT_LED2);
         HT32F_DVB_LEDToggle(HT_LED3);
@@ -431,12 +441,14 @@ void assert_error(u8* filename, u32 uline)
   * @param  count: delay count for loop
   * @retval None
   ***********************************************************************************************************/
-static void __Delay(u32 count)
+static void delay_ms(u32 ms)
 {
-    while (count--)
-    {
-        __NOP(); // Prevent delay loop be optimized
+  uint32_t i, j;
+  for (i = 0; i < ms; i++) {
+    for (j = 0; j < 32000; j++) {
+      __NOP();
     }
+  }
 }
 
 
