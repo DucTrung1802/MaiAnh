@@ -80,10 +80,10 @@ const char *ERROR_COMMAND_SIGN[] = { "ERROR" };
 #define ERROR_COMMAND_SIGN_LENGTH sizeof(ERROR_COMMAND_SIGN) / sizeof(ERROR_COMMAND_SIGN[0])
 
 #define LOG_CONTENT_SIZE 100
-#define COMMAND_TIMEOUT_MS 500
+#define COMMAND_TIMEOUT_MS 100
 #define COMMAND_SIZE 100
 #define MODULE_BUFFER_SIZE 100
-#define SEND_COMMAND_DELAY_MS 2000
+#define SEND_COMMAND_DELAY_MS 1000
 
 
 /* Private function prototypes -----------------------------------------------------------------------------*/
@@ -95,7 +95,9 @@ void clearModuleBuffer(struct Meimei *self);
 
 /* AT Command functions */
 enum StatusType checkModule_AT(struct Meimei *self);
-
+enum StatusType offEcho_ATE0(struct Meimei *self);
+enum StatusType getIMEI_AT_CGSN(struct Meimei *self);
+enum StatusType getModelID_AT_CGMM(struct Meimei *self);
 
 
 /* ==================== */
@@ -127,7 +129,7 @@ void Toggle_LED_3(void);
 
 /* Global variables ----------------------------------------------------------------------------------------*/
 struct Meimei meimei_h;
-vu32 utick = 0;
+vu32 utick;
 
 /* Global functions ----------------------------------------------------------------------------------------*/
 
@@ -186,6 +188,9 @@ void setup(struct Meimei * self) {
 
 void loop(struct Meimei * self) {
 		checkModule_AT(self);
+		offEcho_ATE0(self);
+		getIMEI_AT_CGSN(self);
+		getModelID_AT_CGMM(self);
 }
 
 enum StatusType sendCommand(struct Meimei * self) {
@@ -198,18 +203,14 @@ enum StatusType sendCommand(struct Meimei * self) {
 		USART0_Send(self->command);
 		USART0_Send((char *)"\r\n");
 
-		output_status = STATUS_TIMEOUT;
 		self->command_timer = utick;
 		while(utick - self->command_timer <= COMMAND_TIMEOUT_MS) {
 				output_status = USART0_Receive(self);
-				if (output_status == STATUS_SUCCESS) {
-						break;
-				} else if (output_status == STATUS_ERROR) {
-						break;
-				}
 		}
+		
 		sprintf(self->log_content, "%s\n\n", self->module_buffer);
 		writeLog(self);
+		clearModuleBuffer(self);
 		sprintf(self->log_content, "Command status: %s\n", getStatusTypeString(output_status));
 		writeLog(self);
 		sprintf(self->log_content, "==========\n");
@@ -261,6 +262,112 @@ enum StatusType checkModule_AT(struct Meimei *self) {
 		
 		return output_status;
 }
+
+enum StatusType offEcho_ATE0(struct Meimei *self) {
+		/* Initialize status */
+		enum StatusType output_status = STATUS_UNKNOWN;
+		
+		/* Write Command */
+		sprintf(self->command, "ATE0");
+		output_status = sendCommand(self);
+	
+		/* Actions with status */
+		switch(output_status){
+			
+			case STATUS_SUCCESS:
+					/* Do something */
+					break;
+
+			case STATUS_ERROR:
+					/* Do something */
+					break;
+			
+			case STATUS_TIMEOUT:
+					/* Do something */
+					break;
+			
+			case STATUS_BAD_PARAMETERS:
+					/* Do something */
+					break;
+			
+			default:
+					/* Do something */
+					break;
+		}
+		
+		return output_status;
+}
+
+enum StatusType getIMEI_AT_CGSN(struct Meimei *self) {
+		/* Initialize status */
+		enum StatusType output_status = STATUS_UNKNOWN;
+		
+		/* Write Command */
+		sprintf(self->command, "AT+CGSN");
+		output_status = sendCommand(self);
+	
+		/* Actions with status */
+		switch(output_status){
+			
+			case STATUS_SUCCESS:
+					/* Do something */
+					break;
+
+			case STATUS_ERROR:
+					/* Do something */
+					break;
+			
+			case STATUS_TIMEOUT:
+					/* Do something */
+					break;
+			
+			case STATUS_BAD_PARAMETERS:
+					/* Do something */
+					break;
+			
+			default:
+					/* Do something */
+					break;
+		}
+		
+		return output_status;
+}
+
+enum StatusType getModelID_AT_CGMM(struct Meimei *self) {
+		/* Initialize status */
+		enum StatusType output_status = STATUS_UNKNOWN;
+		
+		/* Write Command */
+		sprintf(self->command, "AT+CGMM");
+		output_status = sendCommand(self);
+	
+		/* Actions with status */
+		switch(output_status){
+			
+			case STATUS_SUCCESS:
+					/* Do something */
+					break;
+
+			case STATUS_ERROR:
+					/* Do something */
+					break;
+			
+			case STATUS_TIMEOUT:
+					/* Do something */
+					break;
+			
+			case STATUS_BAD_PARAMETERS:
+					/* Do something */
+					break;
+			
+			default:
+					/* Do something */
+					break;
+		}
+		
+		return output_status;
+}
+
 
 /* Debug */
 void writeLog(struct Meimei * self) {
@@ -500,7 +607,7 @@ void UART0_Receive(void) {
 }
 
 enum StatusType USART0_Receive(struct Meimei *self) {
-		enum StatusType output_status = STATUS_UNKNOWN;
+		enum StatusType output_status = STATUS_TIMEOUT;
 		u16 uData;
 		u8 index;
 		char *ptr;
@@ -597,7 +704,7 @@ void assert_error(u8 * filename, u32 uline) {
 static void delay_ms(u32 ms) {
   uint32_t i, j;
   for (i = 0; i < ms; i++) {
-    for (j = 0; j < 11950; j++) {
+    for (j = 0; j < 33132; j++) {
       __NOP();
     }
   }
