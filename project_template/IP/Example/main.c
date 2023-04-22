@@ -201,7 +201,7 @@ enum StatusType sendCommand(struct Meimei * self) {
 		output_status = STATUS_TIMEOUT;
 		self->command_timer = utick;
 		while(utick - self->command_timer <= COMMAND_TIMEOUT_MS) {
-				USART0_Receive(self);
+				output_status = USART0_Receive(self);
 				if (output_status == STATUS_SUCCESS) {
 						break;
 				} else if (output_status == STATUS_ERROR) {
