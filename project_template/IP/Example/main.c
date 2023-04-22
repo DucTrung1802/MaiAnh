@@ -73,7 +73,7 @@ enum StatusType {
 } StatusType;
 
 /* Private constants ---------------------------------------------------------------------------------------*/
-const char *SUCCESS_COMMAND_SIGN[] = { "OK\r\n", "\r\n\r\n" };
+const char *SUCCESS_COMMAND_SIGN[] = { "\r\n\r\n", "OK\r\n" };
 const char *ERROR_COMMAND_SIGN[] = { "ERROR" };
 
 #define SUCCESS_COMMAND_SIGN_LENGTH sizeof(SUCCESS_COMMAND_SIGN) / sizeof(SUCCESS_COMMAND_SIGN[0])
@@ -94,7 +94,7 @@ enum StatusType sendCommand(struct Meimei * self);
 void clearModuleBuffer(struct Meimei *self);
 
 /* AT Command functions */
-enum StatusType checkModule(struct Meimei *self);
+enum StatusType checkModule_AT(struct Meimei *self);
 
 
 
@@ -185,7 +185,7 @@ void setup(struct Meimei * self) {
 }
 
 void loop(struct Meimei * self) {
-		checkModule(self);
+		checkModule_AT(self);
 }
 
 enum StatusType sendCommand(struct Meimei * self) {
@@ -227,13 +227,37 @@ void clearModuleBuffer(struct Meimei *self) {
 		self->module_buffer_index = 0;
 }
 
-enum StatusType checkModule(struct Meimei *self) {
+enum StatusType checkModule_AT(struct Meimei *self) {
 		/* Initialize status */
 		enum StatusType output_status = STATUS_UNKNOWN;
 		
 		/* Write Command */
 		sprintf(self->command, "AT");
 		output_status = sendCommand(self);
+	
+		/* Actions with status */
+		switch(output_status){
+			
+			case STATUS_SUCCESS:
+					/* Do something */
+					break;
+
+			case STATUS_ERROR:
+					/* Do something */
+					break;
+			
+			case STATUS_TIMEOUT:
+					/* Do something */
+					break;
+			
+			case STATUS_BAD_PARAMETERS:
+					/* Do something */
+					break;
+			
+			default:
+					/* Do something */
+					break;
+		}
 		
 		return output_status;
 }
