@@ -49,6 +49,10 @@
  */
 
 /* Settings ------------------------------------------------------------------------------------------------*/
+
+
+
+/* Private types -------------------------------------------------------------------------------------------*/
 struct Meimei {
   /* Debug */
   char * log_content;
@@ -58,23 +62,47 @@ struct Meimei {
 	char *command;
 	u16 module_buffer_index;
 	char *module_buffer;
-	bool module_buffer_received;
 } Meimei;
 
-/* Private types -------------------------------------------------------------------------------------------*/
-
+enum StatusType {
+		STATUS_SUCCESS = 0,
+		STATUS_ERROR,
+		STATUS_TIMEOUT,
+		STATUS_BAD_PARAMETERS,
+		STATUS_UNKNOWN
+} StatusType;
 
 /* Private constants ---------------------------------------------------------------------------------------*/
 const char *SUCCESS_COMMAND_SIGN[] = { "OK\r\n", "\r\n\r\n" };
+const char *ERROR_COMMAND_SIGN[] = { "ERROR" };
+
+#define SUCCESS_COMMAND_SIGN_LENGTH sizeof(SUCCESS_COMMAND_SIGN) / sizeof(SUCCESS_COMMAND_SIGN[0])
+#define ERROR_COMMAND_SIGN_LENGTH sizeof(ERROR_COMMAND_SIGN) / sizeof(ERROR_COMMAND_SIGN[0])
 
 #define LOG_CONTENT_SIZE 100
 #define COMMAND_TIMEOUT_MS 500
 #define COMMAND_SIZE 100
 #define MODULE_BUFFER_SIZE 100
-#define SEND_COMMAND_DELAY_MS 1000
+#define SEND_COMMAND_DELAY_MS 2000
 
 
 /* Private function prototypes -----------------------------------------------------------------------------*/
+static void delay_ms(u32 count);
+void setup(struct Meimei * self);
+void loop(struct Meimei * self);
+enum StatusType sendCommand(struct Meimei * self);
+void clearModuleBuffer(struct Meimei *self);
+
+/* AT Command functions */
+enum StatusType checkModule(struct Meimei *self);
+
+
+
+/* ==================== */
+
+/* Debug */
+void writeLog(struct Meimei * self);
+char *getStatusTypeString(enum StatusType status);
 
 /* UART ports */
 void UART0_GNSS_Configuration(void);
@@ -83,7 +111,7 @@ void UART0_Receive(void);
 void USART0_MODULE_Configuration(void);
 void USART0_Send_Char(u16 Data);
 void USART0_Send(char * input_string);
-void USART0_Receive(struct Meimei *self);
+enum StatusType USART0_Receive(struct Meimei *self);
 
 void USART1_DEBUG_Configuration(void);
 void USART1_Send_Char(u16 Data);
@@ -94,15 +122,6 @@ void LED_Init(void);
 void Toggle_LED_1(void);
 void Toggle_LED_2(void);
 void Toggle_LED_3(void);
-
-static void delay_ms(u32 count);
-void setup(struct Meimei * self);
-void loop(struct Meimei * self);
-void sendCommand(struct Meimei * self);
-void clearModuleBuffer(struct Meimei *self);
-
-/* Debug */
-void writeLog(struct Meimei * self);
 
 /* Private macro -------------------------------------------------------------------------------------------*/
 
@@ -166,13 +185,11 @@ void setup(struct Meimei * self) {
 }
 
 void loop(struct Meimei * self) {
-		sprintf(self->command, "AT");
-		sendCommand(self);
-		delay_ms(SEND_COMMAND_DELAY_MS);
+		checkModule(self);
 }
 
-void sendCommand(struct Meimei * self) {
-	
+enum StatusType sendCommand(struct Meimei * self) {
+		enum StatusType output_status = STATUS_UNKNOWN;
 		sprintf(self->log_content, "\n=== SENDING <%s> ===\n", self->command);
 		writeLog(self);
 	
@@ -181,17 +198,26 @@ void sendCommand(struct Meimei * self) {
 		USART0_Send(self->command);
 		USART0_Send((char *)"\r\n");
 
+		output_status = STATUS_TIMEOUT;
 		self->command_timer = utick;
 		while(utick - self->command_timer <= COMMAND_TIMEOUT_MS) {
 				USART0_Receive(self);
-				if (self->module_buffer_received){
+				if (output_status == STATUS_SUCCESS) {
+						break;
+				} else if (output_status == STATUS_ERROR) {
 						break;
 				}
 		}
-		sprintf(self->log_content, "%s\n", self->module_buffer);
+		sprintf(self->log_content, "%s\n\n", self->module_buffer);
+		writeLog(self);
+		sprintf(self->log_content, "Command status: %s\n", getStatusTypeString(output_status));
 		writeLog(self);
 		sprintf(self->log_content, "==========\n");
 		writeLog(self);
+		
+		delay_ms(SEND_COMMAND_DELAY_MS);
+		
+		return output_status;
 }
 
 void clearModuleBuffer(struct Meimei *self) {
@@ -199,13 +225,39 @@ void clearModuleBuffer(struct Meimei *self) {
 				self->module_buffer[self->module_buffer_index] = 0;
 		}
 		self->module_buffer_index = 0;
-		self->module_buffer_received = false;
 }
 
+enum StatusType checkModule(struct Meimei *self) {
+		/* Initialize status */
+		enum StatusType output_status = STATUS_UNKNOWN;
+		
+		/* Write Command */
+		sprintf(self->command, "AT");
+		output_status = sendCommand(self);
+		
+		return output_status;
+}
 
 /* Debug */
 void writeLog(struct Meimei * self) {
   USART1_Send(self -> log_content);
+}
+
+char *getStatusTypeString(enum StatusType status) {
+		switch(status) {
+			case STATUS_SUCCESS:
+					return "SUCCESS";
+			case STATUS_ERROR:
+					return "ERROR";
+			case STATUS_TIMEOUT:
+					return "TIMEOUT";
+			case STATUS_BAD_PARAMETERS:
+					return "PARAMETERS";
+			case STATUS_UNKNOWN:
+					return "UNKNOWN";
+			default:
+					return "UNSUPPORTED STATUS";
+		}
 }
 
 /*************************************************************************************************************
@@ -423,7 +475,8 @@ void UART0_Receive(void) {
   }
 }
 
-void USART0_Receive(struct Meimei *self) {
+enum StatusType USART0_Receive(struct Meimei *self) {
+		enum StatusType output_status = STATUS_UNKNOWN;
 		u16 uData;
 		u8 index;
 		char *ptr;
@@ -435,14 +488,23 @@ void USART0_Receive(struct Meimei *self) {
 			self->module_buffer_index++;
 		}
 
-			/* CONTINUE: Check response OK / ERROR / ... */
-			for (index = 0; index < 2; index++){
-					ptr = strstr(self->module_buffer, SUCCESS_COMMAND_SIGN[index]);
-					if (ptr) {
-							self->module_buffer_received = true;
-							break;
-					}
-			}
+		for (index = 0; index < SUCCESS_COMMAND_SIGN_LENGTH; index++){
+				ptr = strstr(self->module_buffer, SUCCESS_COMMAND_SIGN[index]);
+				if (ptr) {
+						output_status = STATUS_SUCCESS;
+						return output_status;
+				}
+		}
+		
+		for (index = 0; index < ERROR_COMMAND_SIGN_LENGTH; index++){
+				ptr = strstr(self->module_buffer, ERROR_COMMAND_SIGN[index]);
+				if (ptr) {
+						output_status = STATUS_ERROR;
+						return output_status;
+				}
+		}
+		
+		return output_status;
 }
 
 void USART1_Receive(void) {
