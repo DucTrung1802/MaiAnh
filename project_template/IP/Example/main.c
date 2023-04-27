@@ -79,7 +79,7 @@ const char *ERROR_COMMAND_SIGN[] = { "ERROR" };
 #define SUCCESS_COMMAND_SIGN_LENGTH sizeof(SUCCESS_COMMAND_SIGN) / sizeof(SUCCESS_COMMAND_SIGN[0])
 #define ERROR_COMMAND_SIGN_LENGTH sizeof(ERROR_COMMAND_SIGN) / sizeof(ERROR_COMMAND_SIGN[0])
 
-#define LOG_CONTENT_SIZE 400
+#define LOG_CONTENT_SIZE 300
 #define COMMAND_TIMEOUT_MS 2000
 #define COMMAND_SIZE 1100
 #define MODULE_BUFFER_SIZE 100
@@ -540,17 +540,20 @@ enum StatusType publishMessage_AT_QMTPUB(struct BC660K *self) {
 		USART0_Send((char *)"\r\n");
 
 		self->command_timer = utick;
-		while(utick - self->command_timer <= (COMMAND_TIMEOUT_MS + 5000)) {
+		while(utick - self->command_timer <= COMMAND_TIMEOUT_MS) {
 				output_status = USART0_Receive(self);
 		}
-		delay_ms(2000);
-	
+		
+		sprintf(self->log_content, "%s", self->module_buffer);
+		writeLog(self);
+		clearModuleBuffer(self);
+		
 		sprintf(self->command, "hello");
 		USART0_Send(self->command);
 		USART0_Send((char *)"\r\n");
 	
 		self->command_timer = utick;
-		while(utick - self->command_timer <= COMMAND_TIMEOUT_MS) {
+		while(utick - self->command_timer <= (COMMAND_TIMEOUT_MS + 10000)) {
 				output_status = USART0_Receive(self);
 		}
 		
