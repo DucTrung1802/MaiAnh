@@ -53,7 +53,7 @@
 
 
 /* Private types -------------------------------------------------------------------------------------------*/
-struct Meimei {
+struct BC660K {
   /* Debug */
   char * log_content;
 	
@@ -62,7 +62,7 @@ struct Meimei {
 	char *command;
 	u16 module_buffer_index;
 	char *module_buffer;
-} Meimei;
+} BC660K;
 
 enum StatusType {
 		STATUS_SUCCESS = 0,
@@ -79,31 +79,42 @@ const char *ERROR_COMMAND_SIGN[] = { "ERROR" };
 #define SUCCESS_COMMAND_SIGN_LENGTH sizeof(SUCCESS_COMMAND_SIGN) / sizeof(SUCCESS_COMMAND_SIGN[0])
 #define ERROR_COMMAND_SIGN_LENGTH sizeof(ERROR_COMMAND_SIGN) / sizeof(ERROR_COMMAND_SIGN[0])
 
-#define LOG_CONTENT_SIZE 100
-#define COMMAND_TIMEOUT_MS 100
+#define LOG_CONTENT_SIZE 300
+#define COMMAND_TIMEOUT_MS 2000
 #define COMMAND_SIZE 1100
 #define MODULE_BUFFER_SIZE 100
-#define SEND_COMMAND_DELAY_MS 1000
+#define SEND_COMMAND_DELAY_MS 300
 
 
 /* Private function prototypes -----------------------------------------------------------------------------*/
 static void delay_ms(u32 count);
-void setup(struct Meimei * self);
-void loop(struct Meimei * self);
-enum StatusType sendCommand(struct Meimei * self);
-void clearModuleBuffer(struct Meimei *self);
+void setup(struct BC660K * self);
+void loop(struct BC660K * self);
+enum StatusType sendCommand(struct BC660K * self);
+void clearModuleBuffer(struct BC660K *self);
 
 /* AT Command functions */
-enum StatusType checkModule_AT(struct Meimei *self);
-enum StatusType offEcho_ATE0(struct Meimei *self);
-enum StatusType getIMEI_AT_CGSN(struct Meimei *self);
-enum StatusType getModelID_AT_CGMM(struct Meimei *self);
+enum StatusType checkModule_AT(struct BC660K *self);
+enum StatusType offEcho_ATE0(struct BC660K *self);
+enum StatusType getIMEI_AT_CGSN(struct BC660K *self);
+enum StatusType getModelID_AT_CGMM(struct BC660K *self);
+enum StatusType checkNetworkRegister_AT_CEREG(struct BC660K *self);
+enum StatusType getNetworkStatus_AT_QENG(struct BC660K *self);
+enum StatusType setAuthentication_AT_QSSLCFG(struct BC660K *self);
+enum StatusType setCACert_AT_QSSLCFG(struct BC660K *self);
+enum StatusType setClientCert_AT_QSSLCFG(struct BC660K *self);
+enum StatusType setClientPrivateKey_AT_QSSLCFG(struct BC660K *self);
+enum StatusType enableSSL_AT_QMTCFG(struct BC660K *self);
+enum StatusType openMQTT_AT_QMTOPEN(struct BC660K *self);
+enum StatusType connectClient_AT_QMTCONN(struct BC660K *self);
+enum StatusType publishMessage_AT_QMTPUB(struct BC660K *self);
+enum StatusType disconnectMQTT_AT_QMTDISC(struct BC660K *self);
 
 
 /* ==================== */
 
 /* Debug */
-void writeLog(struct Meimei * self);
+void writeLog(struct BC660K * self);
 char *getStatusTypeString(enum StatusType status);
 
 /* UART ports */
@@ -113,7 +124,7 @@ void UART0_Receive(void);
 void USART0_MODULE_Configuration(void);
 void USART0_Send_Char(u16 Data);
 void USART0_Send(char * input_string);
-enum StatusType USART0_Receive(struct Meimei *self);
+enum StatusType USART0_Receive(struct BC660K *self);
 
 void USART1_DEBUG_Configuration(void);
 void USART1_Send_Char(u16 Data);
@@ -128,7 +139,7 @@ void Toggle_LED_3(void);
 /* Private macro -------------------------------------------------------------------------------------------*/
 
 /* Global variables ----------------------------------------------------------------------------------------*/
-struct Meimei meimei_h;
+struct BC660K BC660K_h_h;
 vu32 utick;
 
 /* Global functions ----------------------------------------------------------------------------------------*/
@@ -139,10 +150,10 @@ vu32 utick;
  * @retval None
  ***********************************************************************************************************/
 int main(void) {
-  setup(&meimei_h);
+  setup(&BC660K_h_h);
 
   while (1) {
-    loop(&meimei_h);
+    loop(&BC660K_h_h);
   }
 }
 
@@ -151,7 +162,7 @@ int main(void) {
  * @brief  Main program.
  * @retval None
  ***********************************************************************************************************/
-void setup(struct Meimei * self) {
+void setup(struct BC660K * self) {
   /* Initialize system tick */
   SysTick_Config(SystemCoreClock / 1000);
 	
@@ -163,7 +174,7 @@ void setup(struct Meimei * self) {
   USART0_MODULE_Configuration();
   USART1_DEBUG_Configuration();
 
-  /* Initialize Meimei_handler */
+  /* Initialize BC660K_handler */
   self->log_content = (char * ) malloc(LOG_CONTENT_SIZE * sizeof(char));
   if (!self -> log_content) {
     Toggle_LED_1();
@@ -186,14 +197,21 @@ void setup(struct Meimei * self) {
   writeLog(self);
 }
 
-void loop(struct Meimei * self) {
+void loop(struct BC660K * self) {
 		checkModule_AT(self);
 		offEcho_ATE0(self);
 		getIMEI_AT_CGSN(self);
 		getModelID_AT_CGMM(self);
+		checkNetworkRegister_AT_CEREG(self);
+		getNetworkStatus_AT_QENG(self);
+		disconnectMQTT_AT_QMTDISC(self);
+		openMQTT_AT_QMTOPEN(self);
+		connectClient_AT_QMTCONN(self);
+		publishMessage_AT_QMTPUB(self);
+		disconnectMQTT_AT_QMTDISC(self);
 }
 
-enum StatusType sendCommand(struct Meimei * self) {
+enum StatusType sendCommand(struct BC660K * self) {
 		enum StatusType output_status = STATUS_UNKNOWN;
 		sprintf(self->log_content, "\n=== SENDING <%s> ===\n", self->command);
 		writeLog(self);
@@ -221,14 +239,14 @@ enum StatusType sendCommand(struct Meimei * self) {
 		return output_status;
 }
 
-void clearModuleBuffer(struct Meimei *self) {
+void clearModuleBuffer(struct BC660K *self) {
 		for (self->module_buffer_index = 0; self->module_buffer_index < MODULE_BUFFER_SIZE; self->module_buffer_index++) {
 				self->module_buffer[self->module_buffer_index] = 0;
 		}
 		self->module_buffer_index = 0;
 }
 
-enum StatusType checkModule_AT(struct Meimei *self) {
+enum StatusType checkModule_AT(struct BC660K *self) {
 		/* Initialize status */
 		enum StatusType output_status = STATUS_UNKNOWN;
 		
@@ -263,7 +281,7 @@ enum StatusType checkModule_AT(struct Meimei *self) {
 		return output_status;
 }
 
-enum StatusType offEcho_ATE0(struct Meimei *self) {
+enum StatusType offEcho_ATE0(struct BC660K *self) {
 		/* Initialize status */
 		enum StatusType output_status = STATUS_UNKNOWN;
 		
@@ -298,7 +316,7 @@ enum StatusType offEcho_ATE0(struct Meimei *self) {
 		return output_status;
 }
 
-enum StatusType getIMEI_AT_CGSN(struct Meimei *self) {
+enum StatusType getIMEI_AT_CGSN(struct BC660K *self) {
 		/* Initialize status */
 		enum StatusType output_status = STATUS_UNKNOWN;
 		
@@ -333,7 +351,7 @@ enum StatusType getIMEI_AT_CGSN(struct Meimei *self) {
 		return output_status;
 }
 
-enum StatusType getModelID_AT_CGMM(struct Meimei *self) {
+enum StatusType getModelID_AT_CGMM(struct BC660K *self) {
 		/* Initialize status */
 		enum StatusType output_status = STATUS_UNKNOWN;
 		
@@ -368,9 +386,427 @@ enum StatusType getModelID_AT_CGMM(struct Meimei *self) {
 		return output_status;
 }
 
+enum StatusType checkNetworkRegister_AT_CEREG(struct BC660K *self) {
+		/* Initialize status */
+		enum StatusType output_status = STATUS_UNKNOWN;
+		
+		/* Write Command */
+		sprintf(self->command, "AT+CEREG?");
+		output_status = sendCommand(self);
+	
+		/* Actions with status */
+		switch(output_status){
+			
+			case STATUS_SUCCESS:
+					/* Do something */
+					break;
+
+			case STATUS_ERROR:
+					/* Do something */
+					break;
+			
+			case STATUS_TIMEOUT:
+					/* Do something */
+					break;
+			
+			case STATUS_BAD_PARAMETERS:
+					/* Do something */
+					break;
+			
+			default:
+					/* Do something */
+					break;
+		}
+		
+		return output_status;
+}
+
+enum StatusType getNetworkStatus_AT_QENG(struct BC660K *self) {
+		/* Initialize status */
+		enum StatusType output_status = STATUS_UNKNOWN;
+		
+		/* Write Command */
+		sprintf(self->command, "AT+QENG=0");
+		output_status = sendCommand(self);
+	
+		/* Actions with status */
+		switch(output_status){
+			
+			case STATUS_SUCCESS:
+					/* Do something */
+					break;
+
+			case STATUS_ERROR:
+					/* Do something */
+					break;
+			
+			case STATUS_TIMEOUT:
+					/* Do something */
+					break;
+			
+			case STATUS_BAD_PARAMETERS:
+					/* Do something */
+					break;
+			
+			default:
+					/* Do something */
+					break;
+		}
+		
+		return output_status;
+}
+
+enum StatusType openMQTT_AT_QMTOPEN(struct BC660K *self) {
+		/* Initialize status */
+		enum StatusType output_status = STATUS_UNKNOWN;
+		
+		/* Write Command */
+		sprintf(self->command, "AT+QMTOPEN=0,\"broker.hivemq.com\",1883");
+		output_status = sendCommand(self);
+	
+		/* Actions with status */
+		switch(output_status){
+			
+			case STATUS_SUCCESS:
+					/* Do something */
+					break;
+
+			case STATUS_ERROR:
+					/* Do something */
+					break;
+			
+			case STATUS_TIMEOUT:
+					/* Do something */
+					break;
+			
+			case STATUS_BAD_PARAMETERS:
+					/* Do something */
+					break;
+			
+			default:
+					/* Do something */
+					break;
+		}
+		
+		return output_status;
+}
+enum StatusType connectClient_AT_QMTCONN(struct BC660K *self) {
+		/* Initialize status */
+		enum StatusType output_status = STATUS_UNKNOWN;
+		
+		/* Write Command */
+		sprintf(self->command, "AT+QMTCONN=0,\"anhttm8client\"");
+		output_status = sendCommand(self);
+	
+		/* Actions with status */
+		switch(output_status){
+			
+			case STATUS_SUCCESS:
+					/* Do something */
+					break;
+
+			case STATUS_ERROR:
+					/* Do something */
+					break;
+			
+			case STATUS_TIMEOUT:
+					/* Do something */
+					break;
+			
+			case STATUS_BAD_PARAMETERS:
+					/* Do something */
+					break;
+			
+			default:
+					/* Do something */
+					break;
+		}
+		
+		return output_status;
+}
+
+enum StatusType publishMessage_AT_QMTPUB(struct BC660K *self) {
+		/* Initialize status */
+		enum StatusType output_status = STATUS_UNKNOWN;
+		
+		
+		/* Write Command */
+		sprintf(self->command, "AT+QMTPUB=0,0,0,0,\"topic/pub\"");
+		sprintf(self->log_content, "\n=== SENDING <%s> ===\n", self->command);
+		writeLog(self);
+		clearModuleBuffer(self);
+	
+		USART0_Send(self->command);
+		USART0_Send((char *)"\r\n");
+
+		self->command_timer = utick;
+		while(utick - self->command_timer <= COMMAND_TIMEOUT_MS) {
+				output_status = USART0_Receive(self);
+		}
+		
+		sprintf(self->log_content, "%s", self->module_buffer);
+		writeLog(self);
+		clearModuleBuffer(self);
+		
+		sprintf(self->command, "hello");
+		USART0_Send(self->command);
+		USART0_Send((char *)"\r\n");
+	
+		self->command_timer = utick;
+		while(utick - self->command_timer <= (COMMAND_TIMEOUT_MS + 10000)) {
+				output_status = USART0_Receive(self);
+		}
+		
+		sprintf(self->log_content, "%s\n\n", self->module_buffer);
+		writeLog(self);
+		clearModuleBuffer(self);
+		sprintf(self->log_content, "Command status: %s\n", getStatusTypeString(output_status));
+		writeLog(self);
+		sprintf(self->log_content, "==========\n");
+		writeLog(self);
+		
+		delay_ms(SEND_COMMAND_DELAY_MS);
+		
+		/* Actions with status */
+		switch(output_status){
+			
+			case STATUS_SUCCESS:
+					/* Do something */
+					break;
+
+			case STATUS_ERROR:
+					/* Do something */
+					break;
+			
+			case STATUS_TIMEOUT:
+					/* Do something */
+					break;
+			
+			case STATUS_BAD_PARAMETERS:
+					/* Do something */
+					break;
+			
+			default:
+					/* Do something */
+					break;
+		}
+		
+		return output_status;
+}
+
+enum StatusType disconnectMQTT_AT_QMTDISC(struct BC660K *self) {
+		/* Initialize status */
+		enum StatusType output_status = STATUS_UNKNOWN;
+		
+		/* Write Command */
+		sprintf(self->command, "AT+QMTDISC=0");
+		output_status = sendCommand(self);
+	
+		/* Actions with status */
+		switch(output_status){
+			
+			case STATUS_SUCCESS:
+					/* Do something */
+					break;
+
+			case STATUS_ERROR:
+					/* Do something */
+					break;
+			
+			case STATUS_TIMEOUT:
+					/* Do something */
+					break;
+			
+			case STATUS_BAD_PARAMETERS:
+					/* Do something */
+					break;
+			
+			default:
+					/* Do something */
+					break;
+		}
+		
+		return output_status;
+}
+
+enum StatusType setAuthentication_AT_QSSLCFG(struct BC660K *self) {
+		/* Initialize status */
+		enum StatusType output_status = STATUS_UNKNOWN;
+		
+		/* Write Command */
+		sprintf(self->command, "AT+QSSLCFG=0,0,\"seclevel\",2");
+		output_status = sendCommand(self);
+	
+		/* Actions with status */
+		switch(output_status){
+			
+			case STATUS_SUCCESS:
+					/* Do something */
+					break;
+
+			case STATUS_ERROR:
+					/* Do something */
+					break;
+			
+			case STATUS_TIMEOUT:
+					/* Do something */
+					break;
+			
+			case STATUS_BAD_PARAMETERS:
+					/* Do something */
+					break;
+			
+			default:
+					/* Do something */
+					break;
+		}
+		
+		return output_status;
+}
+
+enum StatusType setCACert_AT_QSSLCFG(struct BC660K *self)  {
+		/* Initialize status */
+		enum StatusType output_status = STATUS_UNKNOWN;
+		
+		/* Write Command */
+		sprintf(self->command, "AT+QSSLCFG=0,0,\"cacert\"");
+		output_status = sendCommand(self);
+	
+		/* Actions with status */
+		switch(output_status){
+			
+			case STATUS_SUCCESS:
+					/* Do something */
+					break;
+
+			case STATUS_ERROR:
+					/* Do something */
+					break;
+			
+			case STATUS_TIMEOUT:
+					/* Do something */
+					break;
+			
+			case STATUS_BAD_PARAMETERS:
+					/* Do something */
+					break;
+			
+			default:
+					/* Do something */
+					break;
+		}
+		
+		return output_status;
+}
+
+enum StatusType setClientCert_AT_QSSLCFG(struct BC660K *self) {
+		/* Initialize status */
+		enum StatusType output_status = STATUS_UNKNOWN;
+		
+		/* Write Command */
+		sprintf(self->command, "AT+QSSLCFG=0,0,\"clientcert\"");
+		output_status = sendCommand(self);
+	
+		/* Actions with status */
+		switch(output_status){
+			
+			case STATUS_SUCCESS:
+					/* Do something */
+					break;
+
+			case STATUS_ERROR:
+					/* Do something */
+					break;
+			
+			case STATUS_TIMEOUT:
+					/* Do something */
+					break;
+			
+			case STATUS_BAD_PARAMETERS:
+					/* Do something */
+					break;
+			
+			default:
+					/* Do something */
+					break;
+		}
+		
+		return output_status;
+}
+
+enum StatusType setClientPrivateKey_AT_QSSLCFG(struct BC660K *self) {
+		/* Initialize status */
+		enum StatusType output_status = STATUS_UNKNOWN;
+		
+		/* Write Command */
+		sprintf(self->command, "AT+QSSLCFG=0,0,\"clientkey\"");
+		output_status = sendCommand(self);
+	
+		/* Actions with status */
+		switch(output_status){
+			
+			case STATUS_SUCCESS:
+					/* Do something */
+					break;
+
+			case STATUS_ERROR:
+					/* Do something */
+					break;
+			
+			case STATUS_TIMEOUT:
+					/* Do something */
+					break;
+			
+			case STATUS_BAD_PARAMETERS:
+					/* Do something */
+					break;
+			
+			default:
+					/* Do something */
+					break;
+		}
+		
+		return output_status;
+}
+
+enum StatusType enableSSL_AT_QMTCFG(struct BC660K *self) {
+		/* Initialize status */
+		enum StatusType output_status = STATUS_UNKNOWN;
+		
+		/* Write Command */
+		sprintf(self->command, "AT+QMTCFG=\"ssl\",0,1,0,0");
+		output_status = sendCommand(self);
+	
+		/* Actions with status */
+		switch(output_status){
+			
+			case STATUS_SUCCESS:
+					/* Do something */
+					break;
+
+			case STATUS_ERROR:
+					/* Do something */
+					break;
+			
+			case STATUS_TIMEOUT:
+					/* Do something */
+					break;
+			
+			case STATUS_BAD_PARAMETERS:
+					/* Do something */
+					break;
+			
+			default:
+					/* Do something */
+					break;
+		}
+		
+		return output_status;
+}
+
 
 /* Debug */
-void writeLog(struct Meimei * self) {
+void writeLog(struct BC660K * self) {
   USART1_Send(self -> log_content);
 }
 
@@ -606,7 +1042,7 @@ void UART0_Receive(void) {
   }
 }
 
-enum StatusType USART0_Receive(struct Meimei *self) {
+enum StatusType USART0_Receive(struct BC660K *self) {
 		enum StatusType output_status = STATUS_TIMEOUT;
 		u16 uData;
 		u8 index;
