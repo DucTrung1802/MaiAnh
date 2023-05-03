@@ -79,18 +79,19 @@ const char *ERROR_COMMAND_SIGN[] = { "ERROR" };
 #define SUCCESS_COMMAND_SIGN_LENGTH sizeof(SUCCESS_COMMAND_SIGN) / sizeof(SUCCESS_COMMAND_SIGN[0])
 #define ERROR_COMMAND_SIGN_LENGTH sizeof(ERROR_COMMAND_SIGN) / sizeof(ERROR_COMMAND_SIGN[0])
 
-#define LOG_CONTENT_SIZE 300
-#define COMMAND_TIMEOUT_MS 2000
+#define LOG_CONTENT_SIZE 1100
+#define SEND_ATTEMPT_DEFAULT 3
+#define COMMAND_TIMEOUT_DEFAULT_MS 2000
 #define COMMAND_SIZE 1100
 #define MODULE_BUFFER_SIZE 100
-#define SEND_COMMAND_DELAY_MS 300
+#define SEND_COMMAND_DELAY_MS 1000
 
 
 /* Private function prototypes -----------------------------------------------------------------------------*/
 static void delay_ms(u32 count);
 void setup(struct BC660K * self);
 void loop(struct BC660K * self);
-enum StatusType sendCommand(struct BC660K * self);
+enum StatusType sendCommand(struct BC660K * self, u8 send_attempt, u32 command_timeout);
 void clearModuleBuffer(struct BC660K *self);
 
 /* AT Command functions */
@@ -182,13 +183,13 @@ void setup(struct BC660K * self) {
   }
 	
   self->command = (char * ) malloc(COMMAND_SIZE * sizeof(char));
-  if (!self -> log_content) {
+  if (!self -> command) {
     Toggle_LED_1();
     while (1);
   }
 	
   self->module_buffer = (char * ) malloc(MODULE_BUFFER_SIZE * sizeof(char));
-  if (!self -> log_content) {
+  if (!self -> module_buffer) {
     Toggle_LED_1();
     while (1);
   }
@@ -208,33 +209,56 @@ void loop(struct BC660K * self) {
 		openMQTT_AT_QMTOPEN(self);
 		connectClient_AT_QMTCONN(self);
 		publishMessage_AT_QMTPUB(self);
+		publishMessage_AT_QMTPUB(self);
 		disconnectMQTT_AT_QMTDISC(self);
 }
-
-enum StatusType sendCommand(struct BC660K * self) {
-		enum StatusType output_status = STATUS_UNKNOWN;
-		sprintf(self->log_content, "\n=== SENDING <%s> ===\n", self->command);
-		writeLog(self);
 	
-		clearModuleBuffer(self);
-		
-		USART0_Send(self->command);
-		USART0_Send((char *)"\r\n");
-
-		self->command_timer = utick;
-		while(utick - self->command_timer <= COMMAND_TIMEOUT_MS) {
-				output_status = USART0_Receive(self);
+enum StatusType sendCommand(struct BC660K * self, u8 send_attempt, u32 command_timeout) {
+		enum StatusType output_status = STATUS_UNKNOWN;
+		if (send_attempt <= 0) {
+				send_attempt = SEND_ATTEMPT_DEFAULT;
 		}
+		u8 count = send_attempt;
 		
-		sprintf(self->log_content, "%s\n\n", self->module_buffer);
-		writeLog(self);
-		clearModuleBuffer(self);
-		sprintf(self->log_content, "Command status: %s\n", getStatusTypeString(output_status));
-		writeLog(self);
-		sprintf(self->log_content, "==========\n");
-		writeLog(self);
+//		char *command;
+//		command = (char * ) malloc(COMMAND_SIZE * sizeof(char));
+//		if (!command) {
+//			Toggle_LED_1();
+//			while (1);
+//		}
 		
-		delay_ms(SEND_COMMAND_DELAY_MS);
+//		strcpy(command, self->command);
+		
+		while (count--){
+				
+				sprintf(self->log_content, "\n=== SENDING <%s> | ATTEMPT %u/%u ===\n", self->command, (send_attempt-count), send_attempt);
+				writeLog(self);
+			
+				clearModuleBuffer(self);
+				
+				
+				USART0_Send(self->command);
+				USART0_Send((char *)"\r\n");
+
+				self->command_timer = utick;
+				while(utick - self->command_timer <= COMMAND_TIMEOUT_DEFAULT_MS) {
+						output_status = USART0_Receive(self);
+				}
+				
+				sprintf(self->log_content, "%s\n\n", self->module_buffer);
+				writeLog(self);
+				clearModuleBuffer(self);
+				sprintf(self->log_content, "Command status: %s\n", getStatusTypeString(output_status));
+				writeLog(self);
+				sprintf(self->log_content, "==========\n");
+				writeLog(self);
+				
+				delay_ms(SEND_COMMAND_DELAY_MS);
+				
+				if (output_status == STATUS_SUCCESS) {
+						break;
+				}
+		}
 		
 		return output_status;
 }
@@ -252,7 +276,7 @@ enum StatusType checkModule_AT(struct BC660K *self) {
 		
 		/* Write Command */
 		sprintf(self->command, "AT");
-		output_status = sendCommand(self);
+		output_status = sendCommand(self, SEND_ATTEMPT_DEFAULT, COMMAND_TIMEOUT_DEFAULT_MS);
 	
 		/* Actions with status */
 		switch(output_status){
@@ -287,7 +311,7 @@ enum StatusType offEcho_ATE0(struct BC660K *self) {
 		
 		/* Write Command */
 		sprintf(self->command, "ATE0");
-		output_status = sendCommand(self);
+		output_status = sendCommand(self, SEND_ATTEMPT_DEFAULT, COMMAND_TIMEOUT_DEFAULT_MS);
 	
 		/* Actions with status */
 		switch(output_status){
@@ -322,7 +346,7 @@ enum StatusType getIMEI_AT_CGSN(struct BC660K *self) {
 		
 		/* Write Command */
 		sprintf(self->command, "AT+CGSN");
-		output_status = sendCommand(self);
+		output_status = sendCommand(self, SEND_ATTEMPT_DEFAULT, COMMAND_TIMEOUT_DEFAULT_MS);
 	
 		/* Actions with status */
 		switch(output_status){
@@ -357,7 +381,7 @@ enum StatusType getModelID_AT_CGMM(struct BC660K *self) {
 		
 		/* Write Command */
 		sprintf(self->command, "AT+CGMM");
-		output_status = sendCommand(self);
+		output_status = sendCommand(self, SEND_ATTEMPT_DEFAULT, COMMAND_TIMEOUT_DEFAULT_MS);
 	
 		/* Actions with status */
 		switch(output_status){
@@ -392,7 +416,7 @@ enum StatusType checkNetworkRegister_AT_CEREG(struct BC660K *self) {
 		
 		/* Write Command */
 		sprintf(self->command, "AT+CEREG?");
-		output_status = sendCommand(self);
+		output_status = sendCommand(self, SEND_ATTEMPT_DEFAULT, COMMAND_TIMEOUT_DEFAULT_MS);
 	
 		/* Actions with status */
 		switch(output_status){
@@ -427,7 +451,7 @@ enum StatusType getNetworkStatus_AT_QENG(struct BC660K *self) {
 		
 		/* Write Command */
 		sprintf(self->command, "AT+QENG=0");
-		output_status = sendCommand(self);
+		output_status = sendCommand(self, SEND_ATTEMPT_DEFAULT, COMMAND_TIMEOUT_DEFAULT_MS);
 	
 		/* Actions with status */
 		switch(output_status){
@@ -462,7 +486,7 @@ enum StatusType openMQTT_AT_QMTOPEN(struct BC660K *self) {
 		
 		/* Write Command */
 		sprintf(self->command, "AT+QMTOPEN=0,\"broker.hivemq.com\",1883");
-		output_status = sendCommand(self);
+		output_status = sendCommand(self, SEND_ATTEMPT_DEFAULT, COMMAND_TIMEOUT_DEFAULT_MS);
 	
 		/* Actions with status */
 		switch(output_status){
@@ -496,7 +520,7 @@ enum StatusType connectClient_AT_QMTCONN(struct BC660K *self) {
 		
 		/* Write Command */
 		sprintf(self->command, "AT+QMTCONN=0,\"anhttm8client\"");
-		output_status = sendCommand(self);
+		output_status = sendCommand(self, SEND_ATTEMPT_DEFAULT, COMMAND_TIMEOUT_DEFAULT_MS);
 	
 		/* Actions with status */
 		switch(output_status){
@@ -531,7 +555,7 @@ enum StatusType publishMessage_AT_QMTPUB(struct BC660K *self) {
 		
 		
 		/* Write Command */
-		sprintf(self->command, "AT+QMTPUB=0,0,0,0,\"topic/pub\"");
+		sprintf(self->command, "AT+QMTPUB=0,0,0,0,\"topic/pub\",5");
 		sprintf(self->log_content, "\n=== SENDING <%s> ===\n", self->command);
 		writeLog(self);
 		clearModuleBuffer(self);
@@ -540,7 +564,7 @@ enum StatusType publishMessage_AT_QMTPUB(struct BC660K *self) {
 		USART0_Send((char *)"\r\n");
 
 		self->command_timer = utick;
-		while(utick - self->command_timer <= COMMAND_TIMEOUT_MS) {
+		while(utick - self->command_timer <= COMMAND_TIMEOUT_DEFAULT_MS) {
 				output_status = USART0_Receive(self);
 		}
 		
@@ -553,7 +577,7 @@ enum StatusType publishMessage_AT_QMTPUB(struct BC660K *self) {
 		USART0_Send((char *)"\r\n");
 	
 		self->command_timer = utick;
-		while(utick - self->command_timer <= (COMMAND_TIMEOUT_MS + 10000)) {
+		while(utick - self->command_timer <= (COMMAND_TIMEOUT_DEFAULT_MS + 2000)) {
 				output_status = USART0_Receive(self);
 		}
 		
@@ -600,7 +624,7 @@ enum StatusType disconnectMQTT_AT_QMTDISC(struct BC660K *self) {
 		
 		/* Write Command */
 		sprintf(self->command, "AT+QMTDISC=0");
-		output_status = sendCommand(self);
+		output_status = sendCommand(self, 2, COMMAND_TIMEOUT_DEFAULT_MS);
 	
 		/* Actions with status */
 		switch(output_status){
@@ -635,7 +659,7 @@ enum StatusType setAuthentication_AT_QSSLCFG(struct BC660K *self) {
 		
 		/* Write Command */
 		sprintf(self->command, "AT+QSSLCFG=0,0,\"seclevel\",2");
-		output_status = sendCommand(self);
+		output_status = sendCommand(self, SEND_ATTEMPT_DEFAULT, COMMAND_TIMEOUT_DEFAULT_MS);
 	
 		/* Actions with status */
 		switch(output_status){
@@ -670,7 +694,7 @@ enum StatusType setCACert_AT_QSSLCFG(struct BC660K *self)  {
 		
 		/* Write Command */
 		sprintf(self->command, "AT+QSSLCFG=0,0,\"cacert\"");
-		output_status = sendCommand(self);
+		output_status = sendCommand(self, SEND_ATTEMPT_DEFAULT, COMMAND_TIMEOUT_DEFAULT_MS);
 	
 		/* Actions with status */
 		switch(output_status){
@@ -705,7 +729,7 @@ enum StatusType setClientCert_AT_QSSLCFG(struct BC660K *self) {
 		
 		/* Write Command */
 		sprintf(self->command, "AT+QSSLCFG=0,0,\"clientcert\"");
-		output_status = sendCommand(self);
+		output_status = sendCommand(self, SEND_ATTEMPT_DEFAULT, COMMAND_TIMEOUT_DEFAULT_MS);
 	
 		/* Actions with status */
 		switch(output_status){
@@ -740,7 +764,7 @@ enum StatusType setClientPrivateKey_AT_QSSLCFG(struct BC660K *self) {
 		
 		/* Write Command */
 		sprintf(self->command, "AT+QSSLCFG=0,0,\"clientkey\"");
-		output_status = sendCommand(self);
+		output_status = sendCommand(self, SEND_ATTEMPT_DEFAULT, COMMAND_TIMEOUT_DEFAULT_MS);
 	
 		/* Actions with status */
 		switch(output_status){
@@ -775,7 +799,7 @@ enum StatusType enableSSL_AT_QMTCFG(struct BC660K *self) {
 		
 		/* Write Command */
 		sprintf(self->command, "AT+QMTCFG=\"ssl\",0,1,0,0");
-		output_status = sendCommand(self);
+		output_status = sendCommand(self, SEND_ATTEMPT_DEFAULT, COMMAND_TIMEOUT_DEFAULT_MS);
 	
 		/* Actions with status */
 		switch(output_status){
