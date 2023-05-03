@@ -76,35 +76,86 @@ enum StatusType {
 const char *SUCCESS_COMMAND_SIGN[] = { "\r\n\r\n", "OK\r\n" };
 const char *ERROR_COMMAND_SIGN[] = { "ERROR" };
 
-#define CA_CERT "-----BEGIN CERTIFICATE-----\
-MIIDQTCCAimgAwIBAgITBmyfz5m/jAo54vB4ikPmljZbyjANBgkqhkiG9w0BAQsF\
-ADA5MQswCQYDVQQGEwJVUzEPMA0GA1UEChMGQW1hem9uMRkwFwYDVQQDExBBbWF6\
-b24gUm9vdCBDQSAxMB4XDTE1MDUyNjAwMDAwMFoXDTM4MDExNzAwMDAwMFowOTEL\
-MAkGA1UEBhMCVVMxDzANBgNVBAoTBkFtYXpvbjEZMBcGA1UEAxMQQW1hem9uIFJv\
-b3QgQ0EgMTCCASIwDQYJKoZIhvcNAQEBBQADggEPADCCAQoCggEBALJ4gHHKeNXj\
-ca9HgFB0fW7Y14h29Jlo91ghYPl0hAEvrAIthtOgQ3pOsqTQNroBvo3bSMgHFzZM\
-9O6II8c+6zf1tRn4SWiw3te5djgdYZ6k/oI2peVKVuRF4fn9tBb6dNqcmzU5L/qw\
-IFAGbHrQgLKm+a/sRxmPUDgH3KKHOVj4utWp+UhnMJbulHheb4mjUcAwhmahRWa6\
-VOujw5H5SNz/0egwLX0tdHA114gk957EWW67c4cX8jJGKLhD+rcdqsq08p8kDi1L\
-93FcXmn/6pUCyziKrlA4b9v7LWIbxcceVOF34GfID5yHI9Y/QCB/IIDEgEw+OyQm\
-jgSubJrIqg0CAwEAAaNCMEAwDwYDVR0TAQH/BAUwAwEB/zAOBgNVHQ8BAf8EBAMC\
-AYYwHQYDVR0OBBYEFIQYzIU07LwMlJQuCFmcx7IQTgoIMA0GCSqGSIb3DQEBCwUA\
-A4IBAQCY8jdaQZChGsV2USggNiMOruYou6r4lK5IpDB/G/wkjUu0yKGX9rbxenDI\
-U5PMCCjjmCXPI6T53iHTfIUJrU6adTrCC2qJeHZERxhlbI1Bjjt/msv0tadQ1wUs\
-N+gDS63pYaACbvXy8MWy7Vu33PqUXHeeE6V/Uq2V8viTO96LXFvKWlJbYK8U90vv\
-o/ufQJVtMVT8QtPHRh8jrdkPSHCa2XV4cdFyQzR1bldZwgJcJmApzyMZFo6IQ6XU\
-5MsI+yMRQ+hDKXJioaldXgjUkK642M4UwtBV8ob2xJNDd2ZhwLnoQdeXeGADbkpy\
-rqXRfboQnoZsG4q5WTP468SQvvG5\
+#define CA_CERT "-----BEGIN CERTIFICATE-----\n\
+MIIDQTCCAimgAwIBAgITBmyfz5m/jAo54vB4ikPmljZbyjANBgkqhkiG9w0BAQsF\n\
+ADA5MQswCQYDVQQGEwJVUzEPMA0GA1UEChMGQW1hem9uMRkwFwYDVQQDExBBbWF6\n\
+b24gUm9vdCBDQSAxMB4XDTE1MDUyNjAwMDAwMFoXDTM4MDExNzAwMDAwMFowOTEL\n\
+MAkGA1UEBhMCVVMxDzANBgNVBAoTBkFtYXpvbjEZMBcGA1UEAxMQQW1hem9uIFJv\n\
+b3QgQ0EgMTCCASIwDQYJKoZIhvcNAQEBBQADggEPADCCAQoCggEBALJ4gHHKeNXj\n\
+ca9HgFB0fW7Y14h29Jlo91ghYPl0hAEvrAIthtOgQ3pOsqTQNroBvo3bSMgHFzZM\n\
+9O6II8c+6zf1tRn4SWiw3te5djgdYZ6k/oI2peVKVuRF4fn9tBb6dNqcmzU5L/qw\n\
+IFAGbHrQgLKm+a/sRxmPUDgH3KKHOVj4utWp+UhnMJbulHheb4mjUcAwhmahRWa6\n\
+VOujw5H5SNz/0egwLX0tdHA114gk957EWW67c4cX8jJGKLhD+rcdqsq08p8kDi1L\n\
+93FcXmn/6pUCyziKrlA4b9v7LWIbxcceVOF34GfID5yHI9Y/QCB/IIDEgEw+OyQm\n\
+jgSubJrIqg0CAwEAAaNCMEAwDwYDVR0TAQH/BAUwAwEB/zAOBgNVHQ8BAf8EBAMC\n\
+AYYwHQYDVR0OBBYEFIQYzIU07LwMlJQuCFmcx7IQTgoIMA0GCSqGSIb3DQEBCwUA\n\
+A4IBAQCY8jdaQZChGsV2USggNiMOruYou6r4lK5IpDB/G/wkjUu0yKGX9rbxenDI\n\
+U5PMCCjjmCXPI6T53iHTfIUJrU6adTrCC2qJeHZERxhlbI1Bjjt/msv0tadQ1wUs\n\
+N+gDS63pYaACbvXy8MWy7Vu33PqUXHeeE6V/Uq2V8viTO96LXFvKWlJbYK8U90vv\n\
+o/ufQJVtMVT8QtPHRh8jrdkPSHCa2XV4cdFyQzR1bldZwgJcJmApzyMZFo6IQ6XU\n\
+5MsI+yMRQ+hDKXJioaldXgjUkK642M4UwtBV8ob2xJNDd2ZhwLnoQdeXeGADbkpy\n\
+rqXRfboQnoZsG4q5WTP468SQvvG5\n\
 -----END CERTIFICATE-----"
+
+#define CLIENT_CERT "-----BEGIN CERTIFICATE-----\n\
+MIIDWTCCAkGgAwIBAgIUSHy3602J7EsGD9yu7ixD2NhEW8MwDQYJKoZIhvcNAQEL\n\
+BQAwTTFLMEkGA1UECwxCQW1hem9uIFdlYiBTZXJ2aWNlcyBPPUFtYXpvbi5jb20g\n\
+SW5jLiBMPVNlYXR0bGUgU1Q9V2FzaGluZ3RvbiBDPVVTMB4XDTIzMDIwOTA3MzYy\n\
+MFoXDTQ5MTIzMTIzNTk1OVowHjEcMBoGA1UEAwwTQVdTIElvVCBDZXJ0aWZpY2F0\n\
+ZTCCASIwDQYJKoZIhvcNAQEBBQADggEPADCCAQoCggEBALrRgSaSI2jO6q910tjq\n\
+0IV7mxPyTvToq/+nuYIbwvwZaSepFZ8CIXtCdVYRlvNca/HHbDaPppNsjr0KVapQ\n\
+9d2Ms2P/TJjOlAYAZREKpQCXA9tMhgoN/g6/mO5Mr8B0gZBKOCHyFyvFyD7/mrWA\n\
+MK5EyW6i6UtuWuTCRDSKX0GUX0xn2Iv0gcskfj7ySJGUWOF1kpMLs2aCXqvUe+nq\n\
+UjEJdOAkmqdm6vvqtXBBxlNb6tTJsbV2/sU91sNEa1ixT03I+hyFgCCxckFxN+rd\n\
+moAGV1MWOqcrVVgDxKhz7H32DPd36gcDP13u2yPVAy6aEa+hgJ70B9bftX2T7Mp9\n\
+HOcCAwEAAaNgMF4wHwYDVR0jBBgwFoAU4nTrfHLAGibVBzv/Ds7MfrRX28MwHQYD\n\
+VR0OBBYEFPPvFoIP7tRU4OyEjO+hjmBAkyCNMAwGA1UdEwEB/wQCMAAwDgYDVR0P\n\
+AQH/BAQDAgeAMA0GCSqGSIb3DQEBCwUAA4IBAQAx17Im/NYiQOrv6VHxL+dogRij\n\
+VldPYZZTxrQ6eHLSiY0aXY70+4Hw0gbNzg1yQJhBXvlwYlCVxl+t49y10I7uxuQ8\n\
+vTTQjidIHTVfTQJOS/6H1V6TArCsGQaKnKj2r2OmyGXsbO1CPCj68WzHMSlf9FSm\n\
+3k4Blwgu/qYERDCQuU1SW9Lr1yvRTMUo6CXx86tl3mM4Bex3hE0XmrfwwnRc8ed5\n\
+8Ko2DjpYszkoqCW+9NzOsd7EqIsvn5FuxyEHk6FpGTibKNkEgnKvesj1eP4qGyjX\n\
+A6hTBIDWjDm1vvjKDltcaSKauT5T3U6IDz8r8zhUEWNpNMZywM+K4j75rWXT\n\
+-----END CERTIFICATE-----\n\
+"
+
+#define CLIENT_KEY "-----BEGIN RSA PRIVATE KEY-----\n\
+MIIEowIBAAKCAQEAutGBJpIjaM7qr3XS2OrQhXubE/JO9Oir/6e5ghvC/BlpJ6kV\n\
+nwIhe0J1VhGW81xr8cdsNo+mk2yOvQpVqlD13YyzY/9MmM6UBgBlEQqlAJcD20yG\n\
+Cg3+Dr+Y7kyvwHSBkEo4IfIXK8XIPv+atYAwrkTJbqLpS25a5MJENIpfQZRfTGfY\n\
+i/SByyR+PvJIkZRY4XWSkwuzZoJeq9R76epSMQl04CSap2bq++q1cEHGU1vq1Mmx\n\
+tXb+xT3Ww0RrWLFPTcj6HIWAILFyQXE36t2agAZXUxY6pytVWAPEqHPsffYM93fq\n\
+BwM/Xe7bI9UDLpoRr6GAnvQH1t+1fZPsyn0c5wIDAQABAoIBAFqY2w7/c9iR79Hj\n\
+S7sSNMlm5g/IRG4Un8S9bAMiv25OTGaFYwzXlbEWy5xPr2qZeWepFFtpUpjP3nDi\n\
+oCSWWoV0hFKMLnM0SyiV7G1VQiuFEMO62o3ptzkjxWBbJCgq1+JHe+1KX95EbhXP\n\
+ExHN9s2sYhsbOhPwkne5liX8rLE6FL76WI4wAWOd6AKk0is225SbjrPGaBvo9YGo\n\
+kAyb1/IQGhD7rHBtsYrPsdzxPhmo+h4H0fIg4q0sEhT9OmBmRZYKa7ftJJ6Wpp1D\n\
+MJ6+sbYoCs1TBsB/lJOpvTGOPQjLMswE2Q6NitvmbwN1hoNzSPA0+wksUItVlxUF\n\
+ACb1tTECgYEA4Y5gVtSYlNDNvz7JtyeLzn9ldYmF37MCosQ4DepOYf1kHu4iA0pH\n\
+7PlsA4/Yp8LUDbnlco0w80oiXtU/AyKMaJXQWc8CC501ePLy/MB5pLYzOnFo5L7F\n\
+XT5Nz+IuCe5XVOio1FwI7rytuyjZPlS5mOJAmIYL0P52CMlr66b+pWsCgYEA1Aif\n\
+8N6EcfNmtr98vCMPyJZMNVYI/lMz0D8SAD/bDUO09g0oOnEg2FdRoWQlsRNRLEKe\n\
+ZSDfXvYNBid5WqJMvaLiK892wZnVmUsQM9YPvBOPmvIHpW3pyVslYWBBKPwJZqle\n\
+Y2b5RcbDekbCZwECULmtTh58fZop5I0jRlzQSXUCgYBBPJe6pXSYHihT9woKkkKK\n\
+cChdLXBt+e16PDxmMe2Hw+0QURm/T92ruZw3D4S/SMdiTPEDB7kvtLJqMU0vT+/C\n\
+VApV31ydFVQg7ku/NMA6FoSMk76d4ltdE6cXyDg+oRPbOAuUmCXxPtsUtcTXlVO0\n\
+10ONmb+TK/XhprgzCTK/jwKBgC6KShkDroyYgXYhZ86f34oGu2mFnem894WBIoFd\n\
+gsZRkzniv268gBocaHWFVuScOdf+M2g9I+pjFY7BQVjMgQ2q3/v/yLBMBN9l44ON\n\
+O9zrajz3XQhJrOQeloDeMM8/Kw0WpfopkxNmwmdneqpDRW/UoZ6hAHBNU16wQArk\n\
+um81AoGBAJo9WKENnP5gIETmC6RHAFmAYOkToRK27didL+WokGa1YucHViDkfeUL\n\
+hmmpO529/TYxVGtPlhI+fs0wv43iA4FDjEWUz6uBWJ7nLgr/5/Ri/VMkLRs9Wi3r\n\
+HbgMESnhMzjy9noRYvptAaue60h6uduOBI1k+XvsTzOr8vZZxUw9\n\
+-----END RSA PRIVATE KEY-----\n\
+"
 
 
 #define SUCCESS_COMMAND_SIGN_LENGTH sizeof(SUCCESS_COMMAND_SIGN) / sizeof(SUCCESS_COMMAND_SIGN[0])
 #define ERROR_COMMAND_SIGN_LENGTH sizeof(ERROR_COMMAND_SIGN) / sizeof(ERROR_COMMAND_SIGN[0])
 
-#define LOG_CONTENT_SIZE 1300
+#define LOG_CONTENT_SIZE 1700
 #define SEND_ATTEMPT_DEFAULT 3
 #define COMMAND_TIMEOUT_DEFAULT_MS 2000
-#define COMMAND_SIZE 1300
+#define COMMAND_SIZE 1700
 #define MODULE_BUFFER_SIZE 100
 #define SEND_COMMAND_DELAY_MS 1000
 
@@ -226,6 +277,8 @@ void loop(struct BC660K * self) {
 		getIMEI_AT_CGSN(self);
 		setAuthentication_AT_QSSLCFG(self);
 		setCACert_AT_QSSLCFG(self);
+		setClientCert_AT_QSSLCFG(self);
+		setClientPrivateKey_AT_QSSLCFG(self);
 //		getModelID_AT_CGMM(self);
 //		checkNetworkRegister_AT_CEREG(self);
 //		getNetworkStatus_AT_QENG(self);
@@ -736,7 +789,7 @@ enum StatusType setCACert_AT_QSSLCFG(struct BC660K *self)  {
 		
 		sprintf(self->command, CA_CERT);
 		USART0_Send(self->command);
-//		USART0_Send((char *)"\r\n");
+		USART0_Send((char *)"\r\n");
 		delay_ms(100);
 		USART0_Send_Char(26);
 	
@@ -788,8 +841,43 @@ enum StatusType setClientCert_AT_QSSLCFG(struct BC660K *self) {
 		
 		/* Write Command */
 		sprintf(self->command, "AT+QSSLCFG=0,0,\"clientcert\"");
-		output_status = sendCommand(self, SEND_ATTEMPT_DEFAULT, COMMAND_TIMEOUT_DEFAULT_MS);
+		sprintf(self->log_content, "\n=== SENDING <%s> ===\n", self->command);
+		writeLog(self);
+		clearModuleBuffer(self);
 	
+		USART0_Send(self->command);
+		USART0_Send((char *)"\r\n");
+
+		self->command_timer = utick;
+		while(utick - self->command_timer <= COMMAND_TIMEOUT_DEFAULT_MS) {
+				output_status = USART0_Receive(self);
+		}
+		
+		sprintf(self->log_content, "%s", self->module_buffer);
+		writeLog(self);
+		clearModuleBuffer(self);
+		
+		sprintf(self->command, CLIENT_CERT);
+		USART0_Send(self->command);
+		USART0_Send((char *)"\r\n");
+		delay_ms(100);
+		USART0_Send_Char(26);
+	
+		self->command_timer = utick;
+		while(utick - self->command_timer <= (COMMAND_TIMEOUT_DEFAULT_MS + 2000)) {
+				output_status = USART0_Receive(self);
+		}
+		
+		sprintf(self->log_content, "%s\n\n", self->module_buffer);
+		writeLog(self);
+		clearModuleBuffer(self);
+		sprintf(self->log_content, "Command status: %s\n", getStatusTypeString(output_status));
+		writeLog(self);
+		sprintf(self->log_content, "==========\n");
+		writeLog(self);
+		
+		delay_ms(SEND_COMMAND_DELAY_MS);
+		
 		/* Actions with status */
 		switch(output_status){
 			
@@ -823,8 +911,43 @@ enum StatusType setClientPrivateKey_AT_QSSLCFG(struct BC660K *self) {
 		
 		/* Write Command */
 		sprintf(self->command, "AT+QSSLCFG=0,0,\"clientkey\"");
-		output_status = sendCommand(self, SEND_ATTEMPT_DEFAULT, COMMAND_TIMEOUT_DEFAULT_MS);
+		sprintf(self->log_content, "\n=== SENDING <%s> ===\n", self->command);
+		writeLog(self);
+		clearModuleBuffer(self);
 	
+		USART0_Send(self->command);
+		USART0_Send((char *)"\r\n");
+
+		self->command_timer = utick;
+		while(utick - self->command_timer <= COMMAND_TIMEOUT_DEFAULT_MS) {
+				output_status = USART0_Receive(self);
+		}
+		
+		sprintf(self->log_content, "%s", self->module_buffer);
+		writeLog(self);
+		clearModuleBuffer(self);
+		
+		sprintf(self->command, CLIENT_KEY);
+		USART0_Send(self->command);
+		USART0_Send((char *)"\r\n");
+		delay_ms(100);
+		USART0_Send_Char(26);
+	
+		self->command_timer = utick;
+		while(utick - self->command_timer <= (COMMAND_TIMEOUT_DEFAULT_MS + 2000)) {
+				output_status = USART0_Receive(self);
+		}
+		
+		sprintf(self->log_content, "%s\n\n", self->module_buffer);
+		writeLog(self);
+		clearModuleBuffer(self);
+		sprintf(self->log_content, "Command status: %s\n", getStatusTypeString(output_status));
+		writeLog(self);
+		sprintf(self->log_content, "==========\n");
+		writeLog(self);
+		
+		delay_ms(SEND_COMMAND_DELAY_MS);
+		
 		/* Actions with status */
 		switch(output_status){
 			
