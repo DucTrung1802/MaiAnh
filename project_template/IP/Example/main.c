@@ -76,13 +76,35 @@ enum StatusType {
 const char *SUCCESS_COMMAND_SIGN[] = { "\r\n\r\n", "OK\r\n" };
 const char *ERROR_COMMAND_SIGN[] = { "ERROR" };
 
+#define CA_CERT "-----BEGIN CERTIFICATE-----\
+MIIDQTCCAimgAwIBAgITBmyfz5m/jAo54vB4ikPmljZbyjANBgkqhkiG9w0BAQsF\
+ADA5MQswCQYDVQQGEwJVUzEPMA0GA1UEChMGQW1hem9uMRkwFwYDVQQDExBBbWF6\
+b24gUm9vdCBDQSAxMB4XDTE1MDUyNjAwMDAwMFoXDTM4MDExNzAwMDAwMFowOTEL\
+MAkGA1UEBhMCVVMxDzANBgNVBAoTBkFtYXpvbjEZMBcGA1UEAxMQQW1hem9uIFJv\
+b3QgQ0EgMTCCASIwDQYJKoZIhvcNAQEBBQADggEPADCCAQoCggEBALJ4gHHKeNXj\
+ca9HgFB0fW7Y14h29Jlo91ghYPl0hAEvrAIthtOgQ3pOsqTQNroBvo3bSMgHFzZM\
+9O6II8c+6zf1tRn4SWiw3te5djgdYZ6k/oI2peVKVuRF4fn9tBb6dNqcmzU5L/qw\
+IFAGbHrQgLKm+a/sRxmPUDgH3KKHOVj4utWp+UhnMJbulHheb4mjUcAwhmahRWa6\
+VOujw5H5SNz/0egwLX0tdHA114gk957EWW67c4cX8jJGKLhD+rcdqsq08p8kDi1L\
+93FcXmn/6pUCyziKrlA4b9v7LWIbxcceVOF34GfID5yHI9Y/QCB/IIDEgEw+OyQm\
+jgSubJrIqg0CAwEAAaNCMEAwDwYDVR0TAQH/BAUwAwEB/zAOBgNVHQ8BAf8EBAMC\
+AYYwHQYDVR0OBBYEFIQYzIU07LwMlJQuCFmcx7IQTgoIMA0GCSqGSIb3DQEBCwUA\
+A4IBAQCY8jdaQZChGsV2USggNiMOruYou6r4lK5IpDB/G/wkjUu0yKGX9rbxenDI\
+U5PMCCjjmCXPI6T53iHTfIUJrU6adTrCC2qJeHZERxhlbI1Bjjt/msv0tadQ1wUs\
+N+gDS63pYaACbvXy8MWy7Vu33PqUXHeeE6V/Uq2V8viTO96LXFvKWlJbYK8U90vv\
+o/ufQJVtMVT8QtPHRh8jrdkPSHCa2XV4cdFyQzR1bldZwgJcJmApzyMZFo6IQ6XU\
+5MsI+yMRQ+hDKXJioaldXgjUkK642M4UwtBV8ob2xJNDd2ZhwLnoQdeXeGADbkpy\
+rqXRfboQnoZsG4q5WTP468SQvvG5\
+-----END CERTIFICATE-----"
+
+
 #define SUCCESS_COMMAND_SIGN_LENGTH sizeof(SUCCESS_COMMAND_SIGN) / sizeof(SUCCESS_COMMAND_SIGN[0])
 #define ERROR_COMMAND_SIGN_LENGTH sizeof(ERROR_COMMAND_SIGN) / sizeof(ERROR_COMMAND_SIGN[0])
 
-#define LOG_CONTENT_SIZE 1100
+#define LOG_CONTENT_SIZE 1300
 #define SEND_ATTEMPT_DEFAULT 3
 #define COMMAND_TIMEOUT_DEFAULT_MS 2000
-#define COMMAND_SIZE 1100
+#define COMMAND_SIZE 1300
 #define MODULE_BUFFER_SIZE 100
 #define SEND_COMMAND_DELAY_MS 1000
 
@@ -202,15 +224,17 @@ void loop(struct BC660K * self) {
 		checkModule_AT(self);
 		offEcho_ATE0(self);
 		getIMEI_AT_CGSN(self);
-		getModelID_AT_CGMM(self);
-		checkNetworkRegister_AT_CEREG(self);
-		getNetworkStatus_AT_QENG(self);
-		disconnectMQTT_AT_QMTDISC(self);
-		openMQTT_AT_QMTOPEN(self);
-		connectClient_AT_QMTCONN(self);
-		publishMessage_AT_QMTPUB(self);
-		publishMessage_AT_QMTPUB(self);
-		disconnectMQTT_AT_QMTDISC(self);
+		setAuthentication_AT_QSSLCFG(self);
+		setCACert_AT_QSSLCFG(self);
+//		getModelID_AT_CGMM(self);
+//		checkNetworkRegister_AT_CEREG(self);
+//		getNetworkStatus_AT_QENG(self);
+//		disconnectMQTT_AT_QMTDISC(self);
+//		openMQTT_AT_QMTOPEN(self);
+//		connectClient_AT_QMTCONN(self);
+//		publishMessage_AT_QMTPUB(self);
+//		publishMessage_AT_QMTPUB(self);
+//		disconnectMQTT_AT_QMTDISC(self);
 }
 	
 enum StatusType sendCommand(struct BC660K * self, u8 send_attempt, u32 command_timeout) {
@@ -694,8 +718,43 @@ enum StatusType setCACert_AT_QSSLCFG(struct BC660K *self)  {
 		
 		/* Write Command */
 		sprintf(self->command, "AT+QSSLCFG=0,0,\"cacert\"");
-		output_status = sendCommand(self, SEND_ATTEMPT_DEFAULT, COMMAND_TIMEOUT_DEFAULT_MS);
+		sprintf(self->log_content, "\n=== SENDING <%s> ===\n", self->command);
+		writeLog(self);
+		clearModuleBuffer(self);
 	
+		USART0_Send(self->command);
+		USART0_Send((char *)"\r\n");
+
+		self->command_timer = utick;
+		while(utick - self->command_timer <= COMMAND_TIMEOUT_DEFAULT_MS) {
+				output_status = USART0_Receive(self);
+		}
+		
+		sprintf(self->log_content, "%s", self->module_buffer);
+		writeLog(self);
+		clearModuleBuffer(self);
+		
+		sprintf(self->command, CA_CERT);
+		USART0_Send(self->command);
+//		USART0_Send((char *)"\r\n");
+		delay_ms(100);
+		USART0_Send_Char(26);
+	
+		self->command_timer = utick;
+		while(utick - self->command_timer <= (COMMAND_TIMEOUT_DEFAULT_MS + 2000)) {
+				output_status = USART0_Receive(self);
+		}
+		
+		sprintf(self->log_content, "%s\n\n", self->module_buffer);
+		writeLog(self);
+		clearModuleBuffer(self);
+		sprintf(self->log_content, "Command status: %s\n", getStatusTypeString(output_status));
+		writeLog(self);
+		sprintf(self->log_content, "==========\n");
+		writeLog(self);
+		
+		delay_ms(SEND_COMMAND_DELAY_MS);
+		
 		/* Actions with status */
 		switch(output_status){
 			
