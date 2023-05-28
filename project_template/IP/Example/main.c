@@ -36,6 +36,9 @@
 
 #include "string.h"
 
+#include <math.h>
+
+
 /** @addtogroup Project_Template Project Template
  * @{
  */
@@ -50,7 +53,11 @@
 
 /* Settings ------------------------------------------------------------------------------------------------*/
 
+#define CA_CERT ""
+#define CLIENT_CERT ""
+#define CLIENT_KEY ""
 
+#define PI 3.14
 
 /* Private types -------------------------------------------------------------------------------------------*/
 struct BC660K {
@@ -75,12 +82,7 @@ enum StatusType {
 /* Private constants ---------------------------------------------------------------------------------------*/
 const char *SUCCESS_COMMAND_SIGN[] = { "\r\n\r\n", "OK\r\n" };
 const char *ERROR_COMMAND_SIGN[] = { "ERROR" };
-
-#define CA_CERT ""
-
-#define CLIENT_CERT ""
-
-#define CLIENT_KEY ""
+#define PI 3,141592653589793238
 
 #define SUCCESS_COMMAND_SIGN_LENGTH sizeof(SUCCESS_COMMAND_SIGN) / sizeof(SUCCESS_COMMAND_SIGN[0])
 #define ERROR_COMMAND_SIGN_LENGTH sizeof(ERROR_COMMAND_SIGN) / sizeof(ERROR_COMMAND_SIGN[0])
@@ -127,12 +129,15 @@ char *getStatusTypeString(enum StatusType status);
 /* UART ports */
 void UART0_GNSS_Configuration(void);
 void UART0_Receive(void);
+void UART0_Read_Block(uint8_t* data);
 
+/* USART0 ports */
 void USART0_MODULE_Configuration(void);
 void USART0_Send_Char(u16 Data);
 void USART0_Send(char * input_string);
 enum StatusType USART0_Receive(struct BC660K *self);
 
+/* USART1 ports */
 void USART1_DEBUG_Configuration(void);
 void USART1_Send_Char(u16 Data);
 void USART1_Send(char * input_string);
@@ -148,9 +153,28 @@ void Toggle_LED_3(void);
 /* Global variables ----------------------------------------------------------------------------------------*/
 struct BC660K BC660K_h_h;
 vu32 utick;
+uint8_t data[100];
+uint8_t* check = NULL;
+uint8_t GPS_raw[100];
+float latitude;
+float longitude;
+float current_lat;
+float current_lon;
+int16_t Ax = 0;
+int16_t Ay = 0;
+int16_t Az = 0;
 
 /* Global functions ----------------------------------------------------------------------------------------*/
-
+void clear(uint8_t *input_string);
+bool getRawGPS(void);
+bool checkValidGPS(uint8_t *raw_GPS);
+void printBool(bool b);
+void extractMainData(void);
+void USART1_Send_Float(float f);
+void updatePosition(void);
+float calculateDistance(void);
+void packMsg(void);
+void USART1_Send_Int16(int16_t value);
 /********************************************************************************************************/
 /*
  * @brief  Main program.
@@ -180,6 +204,10 @@ void setup(struct BC660K * self) {
   UART0_GNSS_Configuration();
   USART0_MODULE_Configuration();
   USART1_DEBUG_Configuration();
+	
+	/* Initialize I2C and Acce */
+	I2C_Configuration();
+	MC3416_Init();
 
   /* Initialize BC660K_handler */
   self->log_content = (char * ) malloc(LOG_CONTENT_SIZE * sizeof(char));
@@ -203,17 +231,37 @@ void setup(struct BC660K * self) {
   sprintf(self -> log_content, "Setup successfully!\n");
   writeLog(self);
 	
-//		checkModule_AT(self);
-//		offEcho_ATE0(self);
-//		getIMEI_AT_CGSN(self);
-//		setAuthentication_AT_QSSLCFG(self);
-//		setCACert_AT_QSSLCFG(self);
-//		setClientCert_AT_QSSLCFG(self);
-//		setClientPrivateKey_AT_QSSLCFG(self);
+	checkModule_AT(self);
+	offEcho_ATE0(self);
+	setAuthentication_AT_QSSLCFG(self);
+	setCACert_AT_QSSLCFG(self);
+	setClientCert_AT_QSSLCFG(self);
+	setClientPrivateKey_AT_QSSLCFG(self);
 }
 
+
+
+
 void loop(struct BC660K * self) {
-	UART0_Receive();
+	MC3416_Read_Accel(&Ax, &Ay, &Az);
+
+	
+	getRawGPS();
+//	USART1_Send((char*) data);
+//	printBool(getRawGPS());
+	extractMainData();
+//	USART1_Send_Float(latitude);
+//	USART1_Send_Float(longitude);
+//	USART1_Send_Float(calculateDistance());
+	
+//	printf("Ax = %d, Ay = %d, Az = %d\r\n", Ax, Ay, Az);
+//	USART1_Send_Int16(Ax);
+//	USART1_Send_Int16(Ay);
+//	USART1_Send_Int16(Az);
+	
+
+
+//	UART0_Receive();
 		
 //		offEcho_ATE0(self);
 //		getIMEI_AT_CGSN(self);
@@ -226,14 +274,16 @@ void loop(struct BC660K * self) {
 //		getNetworkStatus_AT_QENG(self);
 //		checkModule_AT(self);
 //		closeMQTT_AT_QMTCLOSE(self);
-	
-//		wakeUpModule_AT_QSCLK(self);
-//		openMQTT_AT_QMTOPEN(self);
-//		connectClient_AT_QMTCONN(self);
-//		publishMessage_AT_QMTPUB(self);
-//		publishMessage_AT_QMTPUB(self);
-//		publishMessage_AT_QMTPUB(self);
-//		closeMQTT_AT_QMTCLOSE(self);
+
+	wakeUpModule_AT_QSCLK(self);
+	openMQTT_AT_QMTOPEN(self);
+	connectClient_AT_QMTCONN(self);
+	publishMessage_AT_QMTPUB(self);
+	publishMessage_AT_QMTPUB(self);
+	publishMessage_AT_QMTPUB(self);
+	closeMQTT_AT_QMTCLOSE(self);
+
+	delay_ms(1000);
 }
 	
 enum StatusType sendCommand(struct BC660K * self, u8 send_attempt, u32 command_timeout) {
@@ -578,7 +628,7 @@ enum StatusType connectClient_AT_QMTCONN(struct BC660K *self) {
 		
 		/* Write Command */
 		sprintf(self->command, "AT+QMTCONN=0,\"anhttm8client\"");
-		output_status = sendCommand(self, SEND_ATTEMPT_DEFAULT, COMMAND_TIMEOUT_DEFAULT_MS + 2000);
+		output_status = sendCommand(self, SEND_ATTEMPT_DEFAULT, COMMAND_TIMEOUT_DEFAULT_MS + 8000);
 		/* Actions with status */
 		switch(output_status){
 			
@@ -612,7 +662,7 @@ enum StatusType publishMessage_AT_QMTPUB(struct BC660K *self) {
 		
 		
 		/* Write Command */
-		sprintf(self->command, "AT+QMTPUB=0,0,0,0,\"tracker/data\",3");
+		sprintf(self->command, "AT+QMTPUB=0,0,0,0,\"tracker/data\",300");
 		sprintf(self->log_content, "\n=== SENDING <%s> ===\n", self->command);
 		writeLog(self);
 		clearModuleBuffer(self);
@@ -629,7 +679,8 @@ enum StatusType publishMessage_AT_QMTPUB(struct BC660K *self) {
 		writeLog(self);
 		clearModuleBuffer(self);
 		
-		sprintf(self->command, "hello");
+
+		sprintf(self->command, "{\"message\":{\"time\":\"15-05-2023 15:11:35\",\"acce_x\":\"%hd\",\"acce_y\":\"%hd\",\"acce_z\":\"%hd\",\"lat\":\"%f\",\"long\":\"%f\"}}", Ax, Ay, Az, latitude, longitude);
 		USART0_Send(self->command);
 		USART0_Send((char *)"\r\n");
 	
@@ -1228,6 +1279,146 @@ void UART0_Receive(void) {
   }
 }
 
+void UART0_Read_Block(uint8_t  *data)
+{
+	uint8_t index = 0;
+	
+	do
+	{
+  /* Waits until the Rx FIFO/DR is not empty then get data from them                                        */
+  while (USART_GetFlagStatus(HT_UART0, USART_FLAG_RXDR) == RESET);
+	data[index] = (uint8_t)USART_ReceiveData(HT_UART0);
+	}
+	while ((data[index] != 0x0A) && (index++ != 99));
+}
+
+void clear(uint8_t *input_string)
+{
+	uint16_t count = 0;
+	for (count = 0; count < 100; count++)
+	{
+		input_string[count] = 0;
+	}
+}
+
+bool getRawGPS(void)
+{
+	extern uint8_t data[100];
+	uint8_t* check = NULL;
+	uint8_t GPS_raw[100];
+	
+	while (check == NULL)
+	{
+		clear(GPS_raw);
+		UART0_Read_Block(GPS_raw);
+		check = strstr(GPS_raw, "$GNRMC");
+	}
+	strcpy(data, GPS_raw);
+	return checkValidGPS(GPS_raw);
+}
+
+bool checkValidGPS(uint8_t *raw_GPS)
+{
+	bool valid = false;
+	uint8_t* check = NULL;
+	
+	check = strtok(GPS_raw, ",");
+	check = strtok(NULL, ",");
+	check = strtok(NULL, ",");
+	
+	if (strcmp(check, "A") == 0)
+	{
+		valid = true;
+	}
+	
+	return valid;
+}
+
+void printBool(bool b) 
+{
+  char buf[6]; // enough to hold "false" or "true"
+  sprintf(buf, "%s\r\n", b ? "Valid\r\n" : "Invalid\r\n");
+  USART1_Send(buf);
+}
+
+void extractMainData(void)
+{
+	extern uint8_t data[100];
+	extern float latitude;
+	extern float longitude;
+	uint8_t* check = NULL;
+	int b = 0;
+	float a = 0.0;
+	float c = 0.0;
+	
+	check = strtok(data, ",");
+	check = strtok(NULL, ",");
+	check = strtok(NULL, ",");
+	
+	check = strtok(NULL, ",");
+	a = atof(check);
+	b = a/100;
+	c  = a-b*100;
+	latitude = (b + (c/60));
+	check = strtok(NULL, ",");
+	if (strcmp(check, "S") == 0)
+	{
+		latitude = latitude*(-1);
+	}
+	
+	check = strtok(NULL, ",");
+	a = atof(check);
+	b = a/100;
+	c  = a-b*100;
+	longitude = (b + (c/60));
+	check = strtok(NULL, ",");
+	if (strcmp(check, "S") == 0)
+	{
+		longitude = longitude*(-1);
+	}
+}
+
+void USART1_Send_Float(float f) {
+  char buffer[16]; // adjust buffer size as needed
+  sprintf(buffer, "%.6f\r\n", f); // convert float to string with 6 decimal places
+  USART1_Send(buffer); // send string over USART1
+}
+
+void updatePosition(void)
+{
+	extern float latitude, current_lat;
+	extern float longitude, current_lon;
+	current_lat = latitude;
+	current_lon = longitude;
+}
+
+float calculateDistance(void)
+{
+	extern float latitude, current_lat;
+	extern float longitude, current_lon;
+	double theta1, theta2, delta_lat, delta_lon;
+	double a,c,d;
+	
+	theta1 = current_lat * PI / 180;
+	theta2 = latitude * PI / 180;
+	
+	delta_lat = (latitude - current_lat) * PI / 360;
+	delta_lon = (longitude - current_lon) * PI / 360;
+	
+	a = sin(delta_lat)*sin(delta_lat) + cos(theta1)*cos(theta2)*sin(delta_lon)*sin(delta_lon);
+	c = asin(sqrt(a));
+	d = 2*6378137*c;
+	
+	return d;
+}
+
+void packMsg()
+{
+	char buffer[120]; // adjust buffer size as needed
+  sprintf(buffer, "{\"message\":{\"time\":\"15-05-2023 15:11:35\",\"acce_x\":\"%hd\",\"acce_y\":\"%hd\",\"acce_z\":\"%hd\",\"lat\":\"%f\",\"long\":\"%f\"}}\r\n", Ax, Ay, Az, latitude, longitude); // convert float to string with 6 decimal places
+  USART1_Send(buffer); // send string over USART1
+}
+
 enum StatusType USART0_Receive(struct BC660K *self) {
 		enum StatusType output_status = STATUS_TIMEOUT;
 		u16 uData;
@@ -1258,6 +1449,12 @@ enum StatusType USART0_Receive(struct BC660K *self) {
 		}
 		
 		return output_status;
+}
+
+void USART1_Send_Int16(int16_t value) {
+  char buffer[6]; // adjust buffer size as needed
+  sprintf(buffer, "%d\r\n", value); // convert uint16_t to string
+  USART1_Send(buffer); // send string over USART1
 }
 
 void USART1_Receive(void) {
